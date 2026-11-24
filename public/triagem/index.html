@@ -1262,7 +1262,7 @@ function renderAtend() {
     const presBtn = (!r.demo && !r.presenca_id) ? '<a class="btn sm" href="/presenca/?' + presLink + '">+ Presença</a>' : '';
     return '<li class="at">' +
       '<span class="av" aria-hidden="true">' + esc(iniciais(r.n)) + '</span>' +
-      '<div class="at-p"><strong>' + esc(r.n) + (r.demo ? '<span class="tag">exemplo</span>' : '') + presTag + '</strong><span>' + (q ? fData(r.ts) + ' às ' : 'Às ') + fHora(r.ts) + '. ' + esc(linhaMeta(r)) + '. Cód. ' + esc(cod(r)) + '</span></div>' +
+      '<div class="at-p"><strong>' + esc(r.n) + (r.demo ? '<span class="tag">exemplo</span>' : '') + presTag + '</strong><span>' + (q ? fData(r.ts) + ' às ' : 'Às ') + fHora(r.ts) + '. ' + esc(linhaMeta(r)) + '. Cód. ' + esc(cod(r)) + (r.enf ? ' • Resp.: ' + esc(r.enf) : '') + '</span></div>' +
       '<div class="at-m">' +
         '<span class="pill" title="' + esc(PA[kp].l) + '"><i class="dot c-' + PA[kp].c + '"></i>PA <b>' + r.pas + '/' + r.pad + '</b></span>' +
         '<span class="pill" title="' + esc(FC[classFC(r.fc)].l) + '"><i class="dot c-' + FC[classFC(r.fc)].c + '"></i>FC <b>' + r.fc + '</b></span>' +
