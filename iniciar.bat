@@ -6,5 +6,5 @@ echo  Iniciando Plataforma Integrada EcoSafety ^& EcoClinic...
 echo  Modulos: Portal Central + Lista de Presenca + Triagem Clinica
 echo ==============================================================
 echo.
-node server.js
+node local-server.js
 pause

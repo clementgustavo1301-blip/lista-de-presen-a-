@@ -12,6 +12,10 @@
     {
       "source": "/triagem",
       "destination": "/triagem/index.html"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/favicon.svg"
     }
   ]
 }

@@ -65,7 +65,8 @@ async function doInit() {
 
   // 3. Ambiente Local: Tenta SQLite nativo (Node 22.5+), com fallback automático para jsStore
   try {
-    const { DatabaseSync } = require('node:sqlite');
+    const sqliteModuleName = 'node:' + 'sqlite';
+    const { DatabaseSync } = require(sqliteModuleName);
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }

@@ -39,8 +39,4 @@ async function start() {
   }
 }
 
-if (require.main === module) {
-  start();
-}
-
-module.exports = app;
+start();

@@ -96,37 +96,39 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Arquivos estáticos unificados (Portal /, Presença /presenca, Triagem /triagem)
-const publicPath = path.join(__dirname, '..', 'public');
+// Arquivos estáticos unificados (no modo local; na Vercel o CDN serve public/ diretamente)
+if (!process.env.VERCEL) {
+  const publicPath = path.join(__dirname, '..', 'public');
 
-app.get('/presenca', (req, res, next) => {
-  if (!req.originalUrl.split('?')[0].endsWith('/')) {
-    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-    return res.redirect(301, '/presenca/' + qs);
-  }
-  next();
-});
+  app.get('/presenca', (req, res, next) => {
+    if (!req.originalUrl.split('?')[0].endsWith('/')) {
+      const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+      return res.redirect(301, '/presenca/' + qs);
+    }
+    next();
+  });
 
-app.get('/triagem', (req, res, next) => {
-  if (!req.originalUrl.split('?')[0].endsWith('/')) {
-    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-    return res.redirect(301, '/triagem/' + qs);
-  }
-  next();
-});
+  app.get('/triagem', (req, res, next) => {
+    if (!req.originalUrl.split('?')[0].endsWith('/')) {
+      const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+      return res.redirect(301, '/triagem/' + qs);
+    }
+    next();
+  });
 
-app.use(express.static(publicPath));
+  app.use(express.static(publicPath));
 
-app.use('/presenca', (req, res) => {
-  res.sendFile(path.join(publicPath, 'presenca', 'index.html'));
-});
+  app.use('/presenca', (req, res) => {
+    res.sendFile(path.join(publicPath, 'presenca', 'index.html'));
+  });
 
-app.use('/triagem', (req, res) => {
-  res.sendFile(path.join(publicPath, 'triagem', 'index.html'));
-});
+  app.use('/triagem', (req, res) => {
+    res.sendFile(path.join(publicPath, 'triagem', 'index.html'));
+  });
 
-app.use((req, res) => {
-  res.sendFile(path.join(publicPath, 'index.html'));
-});
+  app.use((req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+}
 
 module.exports = app;
