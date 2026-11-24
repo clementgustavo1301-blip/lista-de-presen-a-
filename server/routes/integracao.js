@@ -122,8 +122,8 @@ router.get('/empresas', async (req, res) => {
 router.post('/vincular', async (req, res) => {
   try {
     const { presencaId, triagemId } = req.body || {};
-    if (!presencaId || !triagemId) {
-      return res.status(400).json({ error: 'Informe presencaId e triagemId.' });
+    if (!presencaId || !triagemId || !db.isValidId(presencaId) || !db.isValidId(triagemId)) {
+      return res.status(400).json({ error: 'Informe presencaId e triagemId válidos.' });
     }
 
     await db.run(

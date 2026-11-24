@@ -304,6 +304,13 @@ function ensureId(rawId) {
   return str;
 }
 
+function isValidId(rawId) {
+  const str = String(rawId || '').trim();
+  if (!str) return false;
+  if (mode === 'postgres') return UUID_RE.test(str);
+  return true;
+}
+
 async function ensureEmpresa(nomeEmpresa) {
   const limpo = String(nomeEmpresa || '').trim();
   if (!limpo) return;
@@ -332,6 +339,7 @@ module.exports = {
   serializeArray,
   parseArray,
   ensureId,
+  isValidId,
   ensureEmpresa,
   DEFAULT_SERVICES,
   get isPostgres() {

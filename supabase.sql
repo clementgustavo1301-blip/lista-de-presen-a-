@@ -1096,28 +1096,66 @@ order by ts asc;
 create or replace view public.vw_jornada_integrada
 with (security_invoker = true)
 as
-select
-  coalesce(p.id, t.id) as referencia_id,
-  p.id as presenca_id,
-  t.id as triagem_id,
-  t.codigo_acesso as codigo_triagem,
-  coalesce(p.nome, t.nome_paciente) as nome_colaborador,
-  coalesce(nullif(p.celular, ''), pac.celular, '') as celular,
-  coalesce(p.empresa, t.empresa, 'Não informada') as empresa,
-  coalesce(p.servicos, '{}'::text[]) as procedimentos_bem_estar,
-  (p.id is not null) as passou_presenca,
-  (t.id is not null and not coalesce(t.excluido, false)) as passou_triagem,
-  coalesce(p.status_fluxo, case when t.id is not null then 'triagem_concluida' else 'registrado' end) as status_jornada,
-  t.status as status_medico,
-  coalesce(t.alerta_pa_grave, false) as alerta_pa_grave,
-  coalesce(p.created_at, t.data_hora) as primeiro_registro_em,
-  greatest(coalesce(p.updated_at, p.created_at), coalesce(t.updated_at, t.data_hora)) as ultima_atualizacao_em
-from public.presencas_evento p
-full outer join public.triagens t
-  on (t.id = p.triagem_id or p.id = t.presenca_id) and not coalesce(t.excluido, false)
-left join public.pacientes pac
-  on pac.id = coalesce(p.paciente_id, t.paciente_id)
-order by greatest(coalesce(p.updated_at, p.created_at), coalesce(t.updated_at, t.data_hora)) desc;
+with triagens_ativas as (
+  select *
+  from public.triagens
+  where not excluido
+),
+presencas_com_triagem as (
+  select
+    p.id as referencia_id,
+    p.id as presenca_id,
+    t.id as triagem_id,
+    t.codigo_acesso as codigo_triagem,
+    p.nome as nome_colaborador,
+    coalesce(nullif(p.celular, ''), pac.celular, '') as celular,
+    coalesce(nullif(p.empresa, ''), t.empresa, 'Não informada') as empresa,
+    coalesce(p.servicos, '{}'::text[]) as procedimentos_bem_estar,
+    true as passou_presenca,
+    (t.id is not null) as passou_triagem,
+    coalesce(p.status_fluxo, case when t.id is not null then 'triagem_concluida' else 'registrado' end) as status_jornada,
+    t.status as status_medico,
+    coalesce(t.alerta_pa_grave, false) as alerta_pa_grave,
+    p.created_at as primeiro_registro_em,
+    greatest(coalesce(p.updated_at, p.created_at), coalesce(t.updated_at, t.data_hora, p.created_at)) as ultima_atualizacao_em
+  from public.presencas_evento p
+  left join lateral (
+    select ta.*
+    from triagens_ativas ta
+    where ta.id = p.triagem_id or ta.presenca_id = p.id
+    order by ta.ts desc
+    limit 1
+  ) t on true
+  left join public.pacientes pac on pac.id = coalesce(p.paciente_id, t.paciente_id)
+),
+triagens_avulsas as (
+  select
+    t.id as referencia_id,
+    null::uuid as presenca_id,
+    t.id as triagem_id,
+    t.codigo_acesso as codigo_triagem,
+    t.nome_paciente as nome_colaborador,
+    coalesce(pac.celular, '') as celular,
+    coalesce(nullif(t.empresa, ''), 'Não informada') as empresa,
+    '{}'::text[] as procedimentos_bem_estar,
+    false as passou_presenca,
+    true as passou_triagem,
+    'triagem_concluida'::text as status_jornada,
+    t.status as status_medico,
+    coalesce(t.alerta_pa_grave, false) as alerta_pa_grave,
+    t.data_hora as primeiro_registro_em,
+    coalesce(t.updated_at, t.data_hora) as ultima_atualizacao_em
+  from triagens_ativas t
+  left join public.pacientes pac on pac.id = t.paciente_id
+  where t.presenca_id is null
+    and not exists (
+      select 1 from public.presencas_evento p where p.triagem_id = t.id
+    )
+)
+select * from presencas_com_triagem
+union all
+select * from triagens_avulsas
+order by ultima_atualizacao_em desc;
 
 -- 9.11 VIEW INTEGRADA: Resumo Executivo por Empresa (Presença + Bem-Estar + Triagem LGPD)
 create or replace view public.vw_painel_integrado_empresas

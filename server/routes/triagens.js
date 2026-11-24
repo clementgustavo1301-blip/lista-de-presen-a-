@@ -142,6 +142,9 @@ router.post('/', async (req, res) => {
 
     // Localiza registro de presença (explícito via presenca_id ou automático no mesmo dia pelo nome)
     let presencaId = body.presenca_id || body.presencaId || null;
+    if (presencaId && !db.isValidId(presencaId)) {
+      presencaId = null;
+    }
     if (presencaId) {
       const pRow = await db.get('SELECT id FROM presencas_evento WHERE id = ?', [presencaId]);
       if (!pRow) presencaId = null;
@@ -270,6 +273,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (!db.isValidId(id)) {
+      return res.status(404).json({ error: 'Triagem não encontrada para edição.' });
+    }
     const body = req.body || {};
 
     const triagemAtual = await db.get('SELECT * FROM triagens WHERE id = ? AND excluido = FALSE', [id]);
@@ -348,6 +354,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (!db.isValidId(id)) {
+      return res.status(404).json({ error: 'Triagem não encontrada.' });
+    }
     const now = Date.now();
     await db.run('UPDATE triagens SET excluido = ?, editado_em = ? WHERE id = ?', [db.bool(true), now, id]);
     await db.run(

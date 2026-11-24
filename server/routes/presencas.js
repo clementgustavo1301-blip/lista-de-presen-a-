@@ -151,6 +151,9 @@ router.delete('/servicos/:nome', async (req, res) => {
 // GET /api/presencas/:id — Obtém um participante específico (usado na integração com Triagem)
 router.get('/:id', async (req, res) => {
   try {
+    if (!db.isValidId(req.params.id)) {
+      return res.status(404).json({ error: 'Participante não encontrado na lista de presença.' });
+    }
     const row = await db.get('SELECT * FROM presencas_evento WHERE id = ?', [req.params.id]);
     if (!row) {
       return res.status(404).json({ error: 'Participante não encontrado na lista de presença.' });
@@ -198,6 +201,9 @@ router.post('/', async (req, res) => {
 
     // Verifica se já há triagem vinculada ou feita no mesmo dia para o mesmo colaborador
     let triagemId = body.triagemId || body.triagem_id || null;
+    if (triagemId && !db.isValidId(triagemId)) {
+      triagemId = null;
+    }
     let codigoTriagem = null;
 
     if (triagemId) {
@@ -277,6 +283,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (!db.isValidId(id)) {
+      return res.status(404).json({ error: 'Registro não encontrado.' });
+    }
     const atual = await db.get('SELECT * FROM presencas_evento WHERE id = ?', [id]);
     if (!atual) {
       return res.status(404).json({ error: 'Registro não encontrado.' });
@@ -311,6 +320,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (!db.isValidId(id)) {
+      return res.status(404).json({ error: 'Registro não encontrado.' });
+    }
     await db.run('UPDATE triagens SET presenca_id = NULL WHERE presenca_id = ?', [id]);
     await db.run('DELETE FROM presencas_evento WHERE id = ?', [id]);
     res.json({ ok: true });
