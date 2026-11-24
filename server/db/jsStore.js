@@ -7,50 +7,12 @@ const STORE_FILE = path.join('/tmp', 'ecosafety-unified-store.json');
 let memoryStore = null;
 
 function createInitialStore(defaultServices) {
-  const authService = require('../services/authService');
-  const clinicaService = require('../services/clinicaService');
   const now = Date.now();
 
-  const usuarios = [
-    {
-      id: 'u1',
-      nome: 'Dra. Patrícia Mendes',
-      email: 'admin@ecoclinic.com.br',
-      senha_hash: authService.hashSenha('admin123'),
-      cargo: 'administrador',
-      registro_conselho: 'CRM-RN 4.321',
-      ativo: true,
-      created_at: new Date(now).toISOString(),
-    },
-    {
-      id: 'u2',
-      nome: 'Enf. Maria Eduarda Silveira',
-      email: 'enfermeiro@ecoclinic.com.br',
-      senha_hash: authService.hashSenha('enf123'),
-      cargo: 'enfermeiro',
-      registro_conselho: 'COREN-RN 102.345',
-      ativo: true,
-      created_at: new Date(now).toISOString(),
-    },
-    {
-      id: 'u3',
-      nome: 'Dr. Roberto Albuquerque',
-      email: 'medico@ecoclinic.com.br',
-      senha_hash: authService.hashSenha('medico123'),
-      cargo: 'medico_trabalho',
-      registro_conselho: 'CRM-RN 5.432',
-      ativo: true,
-      created_at: new Date(now).toISOString(),
-    },
-  ];
+  const usuarios = [];
 
   const empresas = [
     { id: 'emp0', razao_social: 'EcoSafety Saúde e Segurança do Trabalho Ltda', nome_fantasia: 'EcoSafety', ativo: true },
-    { id: 'emp1', razao_social: 'Salineira do Litoral Ltda', nome_fantasia: 'Salineira Exemplo', ativo: true },
-    { id: 'emp2', razao_social: 'Construtora e Obras Nordeste S/A', nome_fantasia: 'Construtora Exemplo', ativo: true },
-    { id: 'emp3', razao_social: 'Distribuidora e Revenda de GLP Potiguar', nome_fantasia: 'Revenda de GLP Exemplo', ativo: true },
-    { id: 'emp4', razao_social: 'Indústria Têxtil de Mossoró Ltda', nome_fantasia: 'Indústria Exemplo', ativo: true },
-    { id: 'emp5', razao_social: 'Prestadora de Serviços e Logística Eireli', nome_fantasia: 'Prestadora de Serviços Exemplo', ativo: true },
   ];
 
   const servicos_evento = defaultServices.map((nome, idx) => ({
@@ -61,67 +23,6 @@ function createInitialStore(defaultServices) {
     ordem: idx + 1,
     created_at: new Date(now).toISOString(),
   }));
-
-  const demoSpecs = [
-    { cod: 'EX001', minAtras: 15, n: 'Carlos Eduardo da Silva', dn: '1985-04-12', sx: 'M', emp: 'Salineira Exemplo', tipo: 'Periódico', pas: 120, pad: 80, fc: 72, kg: 78.5, cm: 175.0, obs: 'Paciente assintomático. Sem queixas no momento.', enf: 'Enf. Maria Eduarda Silveira' },
-    { cod: 'EX002', minAtras: 42, n: 'Ana Paula de Souza', dn: '1992-09-24', sx: 'F', emp: 'Salineira Exemplo', tipo: 'Admissional', pas: 110, pad: 70, fc: 68, kg: 62.0, cm: 164.0, obs: 'Triagem admissional sem particularidades.', enf: 'Enf. Maria Eduarda Silveira' },
-    { cod: 'EX003', minAtras: 80, n: 'Francisco Valdemir Oliveira', dn: '1974-11-03', sx: 'M', emp: 'Construtora Exemplo', tipo: 'Periódico', pas: 148, pad: 94, fc: 84, kg: 89.2, cm: 170.0, obs: 'PA alterada na 1ª medida. Repousou 10 minutos.', enf: 'Enf. Maria Eduarda Silveira' },
-    { cod: 'EX004', minAtras: 115, n: 'Mariana Beatriz Fernandes', dn: '2001-02-18', sx: 'F', emp: 'Revenda de GLP Exemplo', tipo: 'Admissional', pas: 118, pad: 76, fc: 75, kg: 54.0, cm: 158.0, obs: '', enf: 'Enf. Maria Eduarda Silveira' },
-    { cod: 'EX005', minAtras: 140, n: 'Antônio José dos Santos', dn: '1968-07-30', sx: 'M', emp: 'Indústria Exemplo', tipo: 'Retorno ao trabalho', pas: 182, pad: 112, fc: 92, kg: 96.0, cm: 168.0, obs: 'Pressão muito elevada. Comunicado ao médico examinador.', enf: 'Enf. Maria Eduarda Silveira' },
-  ];
-
-  const triagens = demoSpecs.map((d) => {
-    const id = crypto.randomUUID();
-    const ts = now - d.minAtras * 60000;
-    const iso = new Date(ts).toISOString();
-    const imc = clinicaService.calcIMC(d.kg, d.cm);
-    const codPA = clinicaService.classPA(d.pas, d.pad);
-    const codIMC = clinicaService.classIMC(imc);
-    const codFC = clinicaService.classFC(d.fc);
-    const alerta = clinicaService.alertaPAGrave(d.pas, d.pad);
-    const token = clinicaService.gerarTokenFicha(
-      {
-        id, codigo_acesso: d.cod, nome_paciente: d.n, data_nascimento_paciente: d.dn,
-        sexo_paciente: d.sx, peso_kg: d.kg, altura_cm: d.cm, pa_sistolica: d.pas, pa_diastolica: d.pad,
-        freq_cardiaca: d.fc, nome_profissional: d.enf, nome_empresa: d.emp, tipo_exame: d.tipo,
-        observacoes: d.obs, data_hora: iso,
-      },
-      'EcoSafety & EcoClinic'
-    );
-
-    return {
-      id,
-      codigo_acesso: d.cod,
-      presenca_id: null,
-      ts,
-      data_hora: iso,
-      nome_paciente: d.n,
-      data_nascimento: d.dn,
-      sexo: d.sx,
-      empresa: d.emp,
-      tipo_exame: d.tipo,
-      pa_sistolica: d.pas,
-      pa_diastolica: d.pad,
-      freq_cardiaca: d.fc,
-      peso_kg: d.kg,
-      altura_cm: d.cm,
-      imc,
-      classificacao_pa: clinicaService.PA_TABELA[codPA].l,
-      codigo_classificacao_pa: codPA,
-      classificacao_imc: clinicaService.IMC_TABELA[codIMC].l,
-      codigo_classificacao_imc: codIMC,
-      classificacao_fc: clinicaService.FC_TABELA[codFC].l,
-      codigo_classificacao_fc: codFC,
-      alerta_pa_grave: alerta,
-      observacoes: d.obs,
-      nome_profissional: d.enf,
-      token_qrcode: token,
-      status: 'aguardando_medico',
-      excluido: false,
-      editado_em: 0,
-      created_at: iso,
-    };
-  });
 
   return {
     configuracoes: {
@@ -138,7 +39,7 @@ function createInitialStore(defaultServices) {
     empresas,
     servicos_evento,
     presencas_evento: [],
-    triagens,
+    triagens: [],
   };
 }
 

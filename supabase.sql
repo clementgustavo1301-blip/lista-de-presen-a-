@@ -1440,49 +1440,23 @@ values
   ('Triagem de Enfermagem', 'triagem', 7)
 on conflict (nome) do nothing;
 
--- 12.3 Empresas Padrão
+-- 12.3 Empresa Padrão
 insert into public.empresas (razao_social, nome_fantasia, setor_atividade)
 values
-  ('EcoSafety Saúde e Segurança do Trabalho Ltda', 'EcoSafety', 'SST e Bem-Estar'),
-  ('Salineira do Litoral Ltda', 'Salineira Exemplo', 'Extração Mineral'),
-  ('Construtora e Obras Nordeste S/A', 'Construtora Exemplo', 'Construção Civil'),
-  ('Distribuidora e Revenda de GLP Potiguar', 'Revenda de GLP Exemplo', 'Comércio de Combustíveis'),
-  ('Indústria Têxtil de Mossoró Ltda', 'Indústria Exemplo', 'Têxtil'),
-  ('Prestadora de Serviços e Logística Eireli', 'Prestadora de Serviços Exemplo', 'Logística')
+  ('EcoSafety Saúde e Segurança do Trabalho Ltda', 'EcoSafety', 'SST e Bem-Estar')
 on conflict do nothing;
 
--- 12.4 Contas Iniciais da Equipe (Senhas PBKDF2-SHA512 reais: admin123, enf123, medico123)
-insert into public.usuarios (nome, email, senha_hash, cargo, registro_conselho)
-values
-  (
-    'Dra. Patrícia Mendes',
-    'admin@ecoclinic.com.br',
-    'caaa1b2d54c2bcbb5226d6604594794e:92d940d143098c05dc4988763b95114a5537793abf692e768df20bb181ad40d5ed27208083a5b2583e91db79b9ca86ca6c4092710e3f7bb333d0829cd0f149ec',
-    'administrador',
-    'CRM-RN 4.321'
-  ),
-  (
-    'Enf. Maria Eduarda Silveira',
-    'enfermeiro@ecoclinic.com.br',
-    '07223ad1cee6e8cef24b94508e9fb3cd:400559409297740df8c47da4fbb470978b1fd1b936fab848c18f8b330ccace7316d32c66aa451eda9821cc0875d4aa70e6480e6bb2dd2bef2a4d00850edee66c',
-    'enfermeiro',
-    'COREN-RN 102.345'
-  ),
-  (
-    'Dr. Roberto Albuquerque',
-    'medico@ecoclinic.com.br',
-    '9b41cd9f71e2e0cae812d2e8a2c9a604:d8d2d34b5739241a3ff96c3c4835c4a86e348cb631cff425fe9905c7651bdce605071ee5a54a9502b3b93d9c20d4db3051b2ee03415238dbce01a8c9a831ee76',
-    'medico_trabalho',
-    'CRM-RN 5.432'
-  )
-on conflict (email) do nothing;
-
--- 12.5 Profissionais
-insert into public.profissionais (nome, registro_conselho, cargo, email)
-values
-  ('Enf. Maria Eduarda Silveira', 'COREN-RN 102.345', 'enfermeiro', 'enfermeiro@ecoclinic.com.br'),
-  ('Dr. Roberto Albuquerque', 'CRM-RN 5.432', 'medico_trabalho', 'medico@ecoclinic.com.br')
-on conflict (email) do nothing;
+-- Limpeza automática de eventuais registros fictícios de demonstração anteriores
+delete from public.triagens where codigo_acesso in ('EX001', 'EX002', 'EX003', 'EX004', 'EX005');
+delete from public.empresas where nome_fantasia in (
+  'Salineira Exemplo',
+  'Construtora Exemplo',
+  'Revenda de GLP Exemplo',
+  'Indústria Exemplo',
+  'Prestadora de Serviços Exemplo'
+);
+delete from public.profissionais where email in ('enfermeiro@ecoclinic.com.br', 'medico@ecoclinic.com.br');
+delete from public.usuarios where email in ('admin@ecoclinic.com.br', 'enfermeiro@ecoclinic.com.br', 'medico@ecoclinic.com.br');
 
 -- ============================================================================
 -- FIM DO SCRIPT SQL UNIFICADO ECOSAFETY & ECOCLINIC

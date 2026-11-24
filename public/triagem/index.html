@@ -730,7 +730,7 @@ function medidasHTML(m) {
 /* ================= estado ================= */
 const S = {
   store: 'pending',   // pending | db | local | erro
-  loaded: false, db: null, real: [], demo: null, showDemo: true,
+  loaded: false, db: null, real: [], demo: null, showDemo: false,
   view: 'triagem', editing: null, started: false, delArmed: null,
   linkedPresencaId: null, pendingPresencas: [], sharedEmpresas: [],
   cfg: {
@@ -739,8 +739,8 @@ const S = {
     modo: (!HOSTED && /^https?:$/.test(location.protocol)) ? 'link' : 'texto'
   }
 };
-const usandoDemo = () => S.loaded && !S.real.length && S.showDemo;
-const recs = () => S.real.length ? S.real : (usandoDemo() ? (S.demo || (S.demo = gerarDemo())) : []);
+const usandoDemo = () => false;
+const recs = () => S.real;
 const cod = r => (r && (r.codigo || r.codigo_acesso)) || String(r && r.id || '').slice(-5).toUpperCase();
 
 function limpaRec(r) {

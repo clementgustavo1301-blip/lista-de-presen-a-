@@ -230,51 +230,10 @@ function initSqliteSchema() {
     });
   }
 
-  const userCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM usuarios').get();
-  if (userCount.count === 0) {
-    const authService = require('../services/authService');
-    const insertUser = sqliteDb.prepare(`
-      INSERT INTO usuarios (id, nome, email, senha_hash, cargo, registro_conselho, ativo)
-      VALUES (?, ?, ?, ?, ?, ?, 1)
-    `);
-    insertUser.run(crypto.randomUUID(), 'Dra. Patrícia Mendes', 'admin@ecoclinic.com.br', authService.hashSenha('admin123'), 'administrador', 'CRM-RN 4.321');
-    insertUser.run(crypto.randomUUID(), 'Enf. Maria Eduarda Silveira', 'enfermeiro@ecoclinic.com.br', authService.hashSenha('enf123'), 'enfermeiro', 'COREN-RN 102.345');
-    insertUser.run(crypto.randomUUID(), 'Dr. Roberto Albuquerque', 'medico@ecoclinic.com.br', authService.hashSenha('medico123'), 'medico_trabalho', 'CRM-RN 5.432');
-  }
-
   const empCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM empresas').get();
   if (empCount.count === 0) {
     const insertEmp = sqliteDb.prepare('INSERT INTO empresas (id, razao_social, nome_fantasia) VALUES (?, ?, ?)');
     insertEmp.run(crypto.randomUUID(), 'EcoSafety Saúde e Segurança do Trabalho Ltda', 'EcoSafety');
-    insertEmp.run(crypto.randomUUID(), 'Salineira do Litoral Ltda', 'Salineira Exemplo');
-    insertEmp.run(crypto.randomUUID(), 'Construtora e Obras Nordeste S/A', 'Construtora Exemplo');
-    insertEmp.run(crypto.randomUUID(), 'Distribuidora e Revenda de GLP Potiguar', 'Revenda de GLP Exemplo');
-    insertEmp.run(crypto.randomUUID(), 'Indústria Têxtil de Mossoró Ltda', 'Indústria Exemplo');
-    insertEmp.run(crypto.randomUUID(), 'Prestadora de Serviços e Logística Eireli', 'Prestadora de Serviços Exemplo');
-  }
-
-  const triCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM triagens').get();
-  if (triCount.count === 0) {
-    const seed = jsStore.loadStore(DEFAULT_SERVICES);
-    const insertTri = sqliteDb.prepare(`
-      INSERT INTO triagens (
-        id, codigo_acesso, ts, data_hora, nome_paciente, data_nascimento, sexo,
-        empresa, tipo_exame, pa_sistolica, pa_diastolica, freq_cardiaca,
-        peso_kg, altura_cm, imc, classificacao_pa, codigo_classificacao_pa,
-        classificacao_imc, codigo_classificacao_imc, classificacao_fc,
-        codigo_classificacao_fc, alerta_pa_grave, observacoes, nome_profissional,
-        token_qrcode, status, excluido, editado_em
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
-    `);
-    for (const t of seed.triagens) {
-      insertTri.run(
-        t.id, t.codigo_acesso, t.ts, t.data_hora, t.nome_paciente, t.data_nascimento, t.sexo,
-        t.empresa, t.tipo_exame, t.pa_sistolica, t.pa_diastolica, t.freq_cardiaca,
-        t.peso_kg, t.altura_cm, t.imc, t.classificacao_pa, t.codigo_classificacao_pa,
-        t.classificacao_imc, t.codigo_classificacao_imc, t.classificacao_fc, t.codigo_classificacao_fc,
-        t.alerta_pa_grave ? 1 : 0, t.observacoes, t.nome_profissional, t.token_qrcode, t.status
-      );
-    }
   }
 }
 
