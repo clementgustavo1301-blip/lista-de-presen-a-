@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/presenca/styles.css" />
 </head>
 
 <body>
@@ -19,27 +19,34 @@
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
+        <a href="/" class="brand-mark" title="Voltar ao Portal Integrado">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
             stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             <path d="M9 12l2 2 4-4" />
           </svg>
-        </div>
+        </a>
         <div class="brand-info">
           <div class="brand-meta">
             <span class="brand-name">EcoSafety</span>
             <span class="meta-sep">/</span>
             <span class="live-date-pill" id="liveDatePill"></span>
             <span class="storage-status" id="storageStatus">
-              <span class="status-dot"></span>
-              <span id="storageStatusText">Salvo</span>
+              <span class="status-dot" id="storageDot"></span>
+              <span id="storageStatusText">Sincronizado</span>
             </span>
           </div>
           <h1 id="eventTitle" contenteditable="true" spellcheck="false" title="Clique para editar o nome do evento">
             Lista de Presença — Massoterapia</h1>
         </div>
       </div>
+
+      <!-- Navegação Integrada entre Módulos -->
+      <nav class="module-switcher no-print" aria-label="Módulos do sistema">
+        <a href="/" class="module-link">Portal</a>
+        <a href="/presenca/" class="module-link active" aria-current="page">Presença</a>
+        <a href="/triagem/#triagem" class="module-link">🩺 Triagem</a>
+      </nav>
 
       <div class="topbar-actions no-print">
         <button type="button" class="btn btn-ghost desktop-only" id="btnBackup">
@@ -67,8 +74,8 @@
         <strong id="mobileStatServices">0</strong>
       </div>
       <div class="quick-pill">
-        <span class="quick-pill-label">Empresas</span>
-        <strong id="mobileStatCompanies">0</strong>
+        <span class="quick-pill-label">Com Triagem</span>
+        <strong id="mobileStatTriagens">0</strong>
       </div>
     </div>
 
@@ -85,8 +92,18 @@
           <span class="edit-badge hidden" id="editModeBadge">Editando</span>
         </div>
 
+        <!-- Banner de integração quando vem encaminhado da Triagem Clínica -->
+        <div class="integration-banner hidden" id="triageImportBanner">
+          <div>
+            <strong id="triageImportTitle">Encaminhado da Triagem Clínica</strong>
+            <p id="triageImportDesc">Confirme o telefone e selecione os procedimentos de bem-estar.</p>
+          </div>
+          <button type="button" class="btn-link" id="btnClearTriageImport">Limpar</button>
+        </div>
+
         <form id="attendanceForm" autocomplete="off">
           <input type="hidden" id="recordId" value="" />
+          <input type="hidden" id="linkedTriagemId" value="" />
 
           <div class="form-group">
             <label for="inputName">Nome completo <span class="required">*</span></label>
@@ -164,6 +181,10 @@
                 <span class="summary-stat-label">Empresas</span>
                 <strong class="summary-stat-value" id="statCompanies">0</strong>
               </div>
+              <div class="summary-stat-item">
+                <span class="summary-stat-label">Triagens</span>
+                <strong class="summary-stat-value" id="statTriagensLinked">0</strong>
+              </div>
             </div>
 
             <div class="summary-breakdown">
@@ -175,12 +196,15 @@
 
           <!-- Mobile-only Export & Backup Tools -->
           <div class="panel mobile-tools-card no-print">
-            <h3>Exportação e Dados</h3>
-            <p class="panel-subtitle">Exporte a planilha para o Excel ou gerencie o backup local.</p>
+            <h3>Exportação e Integração</h3>
+            <p class="panel-subtitle">Exporte a planilha para o Excel, imprima ou acesse a Triagem Clínica.</p>
             <div class="mobile-tools-grid">
               <button type="button" class="btn btn-primary btn-block" id="btnExportCSVMobile">
                 Exportar planilha (.CSV)
               </button>
+              <a href="/triagem/#triagem" class="btn btn-secondary btn-block" style="text-decoration:none">
+                🩺 Ir para Triagem Clínica
+              </a>
               <button type="button" class="btn btn-secondary btn-block" id="btnPrintMobile">
                 Imprimir lista
               </button>
@@ -241,6 +265,7 @@
                   <th class="col-phone">Telefone</th>
                   <th class="col-company">Empresa</th>
                   <th class="col-services">Procedimentos</th>
+                  <th class="col-triage">Triagem</th>
                   <th class="col-time">Horário</th>
                   <th class="col-actions no-print"></th>
                 </tr>
@@ -359,7 +384,7 @@
 
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-  <script src="app.js" defer></script>
+  <script src="/presenca/app.js" defer></script>
 </body>
 
 </html>

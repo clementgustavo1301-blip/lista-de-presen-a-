@@ -1,0 +1,1762 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Triagem EcoClinic</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap">
+<style>
+/* Layout: moldura tingida com navegação lateral solta; o conteúdo vive numa única folha branca
+   de cantos largos. No celular a navegação vira uma barra flutuante no rodapé.
+   O único elemento forte é o mostrador escuro da pressão arterial, como um monitor de sinais vitais. */
+:root{
+  --frame:#e3eeea; --sheet:#ffffff; --field:#f1f6f3; --line:#e1e9e5;
+  --ink:#0b1f19; --ink-2:#44574e; --muted:#6d7f77;
+  --accent:#00805f; --accent-ink:#ffffff; --accent-soft:#d9f3e8;
+  --hero:#0a2a22; --hero-ink:#f2fbf7; --hero-muted:#a3beb4; --hero-track:rgba(255,255,255,.16);
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --crit2:#7d1d4e; --low:#2a78d6;
+  --s1:#2a78d6; --s2:#eb6834;
+  --danger-ink:#a32222; --alert-bg:#fdeceb;
+  --qr-bg:#ffffff;
+  --sh-1:0 1px 2px rgba(11,31,25,.08), 0 2px 6px rgba(11,31,25,.05);
+  --sh-2:0 24px 60px -20px rgba(11,31,25,.35), 0 4px 14px rgba(11,31,25,.08);
+  --f-body:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-num:'Unbounded','Onest',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --frame:#070f0d; --sheet:#101a17; --field:#18251f; --line:#22322b;
+    --ink:#e9f2ee; --ink-2:#b1c1b9; --muted:#85968d;
+    --accent:#2fd3a2; --accent-ink:#04231a; --accent-soft:#12382d;
+    --hero:#0e3329; --hero-ink:#f2fbf7; --hero-muted:#a3beb4;
+    --crit2:#e06aa8; --low:#3987e5; --s1:#3987e5; --s2:#d95926;
+    --danger-ink:#ff9a9a; --alert-bg:#3a1d1c;
+    --sh-1:0 1px 2px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    --sh-2:0 24px 60px -20px rgba(0,0,0,.8), 0 4px 14px rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --frame:#070f0d; --sheet:#101a17; --field:#18251f; --line:#22322b;
+  --ink:#e9f2ee; --ink-2:#b1c1b9; --muted:#85968d;
+  --accent:#2fd3a2; --accent-ink:#04231a; --accent-soft:#12382d;
+  --hero:#0e3329; --hero-ink:#f2fbf7; --hero-muted:#a3beb4;
+  --crit2:#e06aa8; --low:#3987e5; --s1:#3987e5; --s2:#d95926;
+  --danger-ink:#ff9a9a; --alert-bg:#3a1d1c;
+  --sh-1:0 1px 2px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+  --sh-2:0 24px 60px -20px rgba(0,0,0,.8), 0 4px 14px rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--frame);color:var(--ink);font:400 15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p,dl,dd,ul,ol,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.c-good{--c:var(--good)} .c-warn{--c:var(--warn)} .c-serious{--c:var(--serious)} .c-crit{--c:var(--crit)}
+.c-crit2{--c:var(--crit2)} .c-low{--c:var(--low)} .c-s1{--c:var(--s1)} .c-s2{--c:var(--s2)}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--c,var(--muted))}
+
+/* ---------- moldura e navegação ---------- */
+#app{display:grid;grid-template-columns:228px minmax(0,1fr);gap:12px;padding:12px;max-width:1400px;margin:0 auto;align-items:start}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:22px;padding:14px 6px 10px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0;padding:0 8px}
+.mark{flex:none;width:38px;height:38px;border-radius:13px;background:var(--hero);color:#3fe0ad;display:grid;place-items:center}
+.mark svg{width:22px;height:22px}
+.brand-t{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.brand-t b{font:600 15px/1.2 var(--f-num);letter-spacing:-.01em}
+.brand-t span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav a{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:14px;text-decoration:none;color:var(--ink-2);font-weight:500}
+.nav a svg{flex:none;width:20px;height:20px}
+.nav a:hover{background:color-mix(in srgb,var(--sheet) 55%,transparent);color:var(--ink)}
+.nav a[aria-current="page"]{background:var(--sheet);color:var(--ink);font-weight:600;box-shadow:var(--sh-1)}
+.nav a[aria-current="page"] svg{color:var(--accent)}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);padding:0 12px;align-self:flex-start}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status.ok i{background:var(--good)} .status.local i{background:var(--warn)} .status.erro i{background:var(--crit)}
+
+.sheet{background:var(--sheet);border-radius:28px;padding:30px 34px 44px;min-height:620px;display:flex;flex-direction:column;gap:22px;min-width:0}
+.view{display:flex;flex-direction:column;gap:28px;min-width:0}
+.vh{display:flex;flex-direction:column;gap:4px}
+.vh h1{font:600 24px/1.2 var(--f-num);letter-spacing:-.02em;text-wrap:balance;overflow-wrap:anywhere}
+.vh p{color:var(--ink-2);max-width:60ch}
+.blk{display:flex;flex-direction:column;gap:14px;min-width:0}
+.blk h2,.dlg-side h2{font:600 18px/1.25 var(--f-body);letter-spacing:-.01em}
+.blk h3{font:600 15px/1.3 var(--f-body)}
+.note{font-size:13px;color:var(--muted)}
+.banner{display:flex;gap:10px 16px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--accent-soft);border-radius:16px;padding:12px 16px;font-size:13.5px}
+.banner.warn{background:var(--alert-bg)}
+
+/* ---------- botões e campos ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:14px;padding:9px 16px;font-weight:600;font-size:14px;cursor:pointer;text-decoration:none;line-height:1.3}
+.btn:hover{border-color:var(--muted)}
+.btn svg{width:17px;height:17px;flex:none}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 10px 22px -10px var(--accent)}
+.btn.pri:hover{filter:brightness(1.07)}
+.btn.big{padding:14px 24px;font-size:16px;border-radius:16px}
+.btn.sm{padding:6px 12px;font-size:13px;border-radius:11px}
+.btn.danger{color:var(--danger-ink)}
+.btn:disabled{opacity:.55;cursor:default}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:13.5px;font-weight:500;color:var(--ink-2)}
+.f em{font-style:normal;font-weight:400;color:var(--muted);font-size:12.5px;margin-left:4px}
+.in{width:100%;min-width:0;background:var(--field);border:1.5px solid transparent;border-radius:14px;padding:11px 14px;font-size:15px;color:var(--ink)}
+.in::placeholder{color:var(--muted)}
+.in:hover{border-color:var(--line)}
+.in:focus{outline:0;border-color:var(--accent);background:var(--sheet)}
+.in[aria-invalid="true"]{border-color:var(--crit)}
+.in.lg{font-size:17px;padding:13px 16px}
+textarea.in{resize:vertical;min-height:66px}
+.err{font-size:12.5px;font-weight:500;color:var(--danger-ink)}
+.err:empty{display:none}
+.seg{display:flex;background:var(--field);padding:4px;border-radius:14px;gap:2px}
+.seg button{flex:1 1 0;border:0;background:transparent;border-radius:10px;padding:8px 12px;font-weight:500;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);font-weight:600;box-shadow:var(--sh-1)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:var(--sheet);border-radius:999px;padding:7px 15px;font-size:14px;font-weight:500;color:var(--ink-2);cursor:pointer}
+.chips button:hover{border-color:var(--muted)}
+.chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--sheet);font-weight:600}
+
+/* ---------- nova triagem ---------- */
+.tri{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:34px;align-items:start}
+.form{display:flex;flex-direction:column;gap:30px;min-width:0}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.mgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.mt{display:flex;flex-direction:column;gap:6px;background:var(--field);border:1.5px solid transparent;border-radius:20px;padding:13px 15px;min-width:0;cursor:text}
+.mt:focus-within{border-color:var(--accent);background:var(--sheet)}
+.mt:has(input[aria-invalid="true"]){border-color:var(--crit)}
+.mt-l{font-size:13px;font-weight:500;color:var(--ink-2)}
+.mt-r{display:flex;align-items:baseline;gap:6px;min-width:0}
+.mt input{flex:1 1 0;width:100%;min-width:0;border:0;background:transparent;padding:0;font:600 24px/1.2 var(--f-num);letter-spacing:-.02em;color:var(--ink)}
+.mt input::placeholder{color:color-mix(in srgb,var(--muted) 45%,transparent)}
+.mt input:focus{outline:0}
+.mt .un{font-size:12.5px;color:var(--muted);flex:none}
+.mt.pa{grid-column:1/-1}
+.mt.pa input{flex:0 0 auto;width:2.9em;font-size:30px}
+.mt.pa .sl{font:500 30px/1.2 var(--f-num);color:var(--muted)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.prev{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);display:flex;flex-direction:column;gap:14px;min-width:0}
+.alert{background:var(--alert-bg);border-radius:16px;padding:12px 14px;font-size:13.5px}
+.alert b{color:var(--danger-ink)}
+
+/* ---------- mostradores de sinais vitais ---------- */
+.vit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vt{display:flex;flex-direction:column;gap:9px;background:var(--field);border-radius:20px;padding:14px 16px;min-width:0}
+.vt-l{font-size:13px;font-weight:500;color:var(--ink-2)}
+.vt-n{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.vt-n b{font:600 26px/1 var(--f-num);letter-spacing:-.03em}
+.vt-n b i{font-style:normal;opacity:.4;margin:0 .05em}
+.vt-n span{font-size:12.5px;color:var(--muted)}
+.vt-c{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.meter{display:flex;gap:3px}
+.meter i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.meter i.on{background:var(--c)}
+.vt.hero{grid-column:1/-1;background:var(--hero);color:var(--hero-ink);padding:20px 22px;gap:12px;
+  --good:#2fc46b;--crit:#f06262;--crit2:#e06aa8;--low:#5aa2f0}
+.vt.hero .vt-l,.vt.hero .vt-n span{color:var(--hero-muted)}
+.vt.hero .vt-n b{font-size:44px}
+.vt.hero .meter i{height:7px;background:var(--hero-track)}
+.vt.hero .meter i.on{background:var(--c)}
+.vt.sm{padding:12px 16px;gap:4px}
+.vt.sm .vt-n b{font-size:19px}
+
+/* ---------- atendimentos ---------- */
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.filters .f{flex:1 1 170px;max-width:260px}
+.filters .f.grow{max-width:none;flex:3 1 240px}
+.at-list{display:flex;flex-direction:column}
+.at{display:grid;grid-template-columns:auto minmax(0,1.2fr) minmax(0,1.3fr) auto;gap:8px 16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.at:first-child{border-top:0}
+.av{width:44px;height:44px;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:14px;letter-spacing:.02em}
+.at-p{min-width:0;display:flex;flex-direction:column}
+.at-p strong{font-weight:600;overflow-wrap:anywhere}
+.at-p span{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.at-m{display:flex;gap:6px 8px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);align-items:center}
+.at-m .pill{display:inline-flex;align-items:center;gap:6px;background:var(--field);border-radius:999px;padding:4px 11px 4px 9px;white-space:nowrap}
+.at-m .pill b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.at-a{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tag{font-size:11.5px;font-weight:600;color:var(--muted);background:var(--field);border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+.empty{padding:36px 8px;text-align:center;color:var(--ink-2)}
+.empty b{display:block;font:600 17px var(--f-body);color:var(--ink);margin-bottom:4px}
+
+/* ---------- painel ---------- */
+.pf{display:flex;flex-direction:column;gap:14px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{background:var(--field);border-radius:20px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stat>span{font-size:13px;font-weight:500;color:var(--ink-2)}
+.stat b{font:600 27px/1.05 var(--f-num);letter-spacing:-.03em}
+.stat b small{font:500 12.5px var(--f-body);color:var(--muted);letter-spacing:0;margin-left:5px}
+.stat p{font-size:12.5px;color:var(--muted)}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px}
+.g2c{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px}
+.dist{display:flex;flex-direction:column;gap:12px;min-width:0}
+.stack100{display:flex;gap:2px;height:14px}
+.stack100 i{background:var(--c);border-radius:4px;min-width:4px}
+.stack100 i:first-child{border-radius:7px 4px 4px 7px} .stack100 i:last-child{border-radius:4px 7px 7px 4px} .stack100 i:only-child{border-radius:7px}
+.drows{display:flex;flex-direction:column}
+.drow{display:grid;grid-template-columns:auto minmax(0,1fr) auto 44px;gap:0 9px;align-items:center;font-size:13.5px;padding:7px 0;border-top:1px solid var(--line)}
+.drow:first-child{border-top:0}
+.drow .dl{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.drow .dl small{color:var(--muted);font-size:12px}
+.drow .dn{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.drow .dp{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.chart{position:relative;width:100%;min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:400 11.5px var(--f-body);fill:var(--muted)}
+.chart .val{fill:var(--ink);font-weight:600;font-size:12.5px}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.ch-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.ch-head>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:580px}
+.tbl th{font-size:12.5px;font-weight:500;color:var(--muted);text-align:right;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.tbl th:first-child,.tbl td:first-child{text-align:left;padding-left:0;font-weight:500}
+.tbl th:last-child,.tbl td:last-child{padding-right:0}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.sup{color:var(--muted);font-size:13px;text-align:center}
+.destq-text{background:var(--field);border-radius:20px;padding:18px 20px;font-size:15px;line-height:1.65;white-space:pre-line;user-select:all;max-width:76ch}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--ink);color:var(--sheet);font-size:12.5px;line-height:1.45;padding:8px 11px;border-radius:10px;white-space:pre-line;max-width:240px;box-shadow:var(--sh-2)}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 96px);transform:translateX(-50%);z-index:70;background:var(--ink);color:var(--sheet);padding:11px 18px;border-radius:14px;font-size:14px;font-weight:500;box-shadow:var(--sh-2);max-width:min(92vw,520px);text-align:center}
+
+/* ---------- configurações ---------- */
+.cfg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px;align-items:start}
+.lgpd{display:flex;flex-direction:column;gap:9px}
+.lgpd li{position:relative;padding-left:18px;font-size:14px;color:var(--ink-2)}
+.lgpd li::before{content:"";position:absolute;left:2px;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* ---------- diálogo do QR ---------- */
+dialog{border:0;padding:0;border-radius:28px;background:var(--sheet);color:var(--ink);width:min(840px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:var(--sh-2)}
+dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
+.dlg{display:grid;grid-template-columns:minmax(0,310px) minmax(0,1fr);gap:26px;padding:26px}
+.dlg-qr{display:flex;flex-direction:column;gap:10px}
+.dlg-qr .note{text-align:center}
+.qr{background:var(--qr-bg);border-radius:22px;padding:10px;aspect-ratio:1;max-width:100%;display:grid;place-items:center;box-shadow:0 0 0 1.5px var(--line)}
+.qr svg{width:100%;height:100%;display:block}
+.qr p{color:#333333;font-size:13px;text-align:center;padding:14px}
+.dlg-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.dlg-h{display:flex;gap:13px;align-items:flex-start}
+.dlg-h h2{font-size:20px;overflow-wrap:anywhere}
+.ok{flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.ok svg{width:20px;height:20px}
+
+/* ---------- ficha do paciente ---------- */
+#ficha{max-width:470px;margin:0 auto;padding-inline:16px;padding-block:18px 32px;display:flex;flex-direction:column;gap:16px}
+.fx-top{display:flex;align-items:center;gap:11px}
+.fx-top b{font:600 15px/1.25 var(--f-num);letter-spacing:-.01em}
+.fx-card{background:var(--sheet);border-radius:28px;padding:22px 20px;display:flex;flex-direction:column;gap:18px}
+.fx-card h1{font:600 21px/1.25 var(--f-num);letter-spacing:-.02em;overflow-wrap:anywhere}
+.fx-meta{font-size:14px;color:var(--ink-2)}
+.fx-foot{font-size:13px;color:var(--muted);text-align:center}
+
+@media (max-width:1180px){
+  .g3{gap:22px}
+}
+@media (max-width:960px){
+  #app{grid-template-columns:minmax(0,1fr);gap:0;padding:0}
+  .side{position:static;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+  .brand{padding:0}
+  .status{padding:0;align-self:center}
+  .nav{position:fixed;z-index:30;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);flex-direction:row;gap:2px;padding:6px;border-radius:24px;
+    background:color-mix(in srgb,var(--sheet) 86%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:var(--sh-2);max-width:520px;margin:0 auto}
+  .nav a{flex:1 1 0;flex-direction:column;gap:3px;padding:8px 2px;font-size:11px;border-radius:18px;min-width:0;text-align:center}
+  .nav a span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav a:hover{background:transparent}
+  .nav a[aria-current="page"]{background:var(--accent-soft);box-shadow:none}
+  .sheet{border-radius:28px 28px 0 0;padding:24px 16px 120px;min-height:80vh}
+  .tri{grid-template-columns:minmax(0,1fr);gap:26px}
+  .prev{position:static}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3,.g2c,.cfg{grid-template-columns:minmax(0,1fr)}
+  .at{grid-template-columns:auto minmax(0,1fr)}
+  .at-m,.at-a{grid-column:2}
+  .at-a{justify-content:flex-start}
+}
+@media (max-width:560px){
+  .g2{grid-template-columns:minmax(0,1fr)}
+  .mt{padding:11px 10px}
+  .mt input{font-size:18px}
+  .mt.pa{padding:13px 15px}
+  .mt.pa input,.mt.pa .sl{font-size:26px}
+  .dlg{grid-template-columns:minmax(0,1fr);padding:18px;gap:18px}
+  .dlg-qr{max-width:270px;margin:0 auto;width:100%}
+  .vh h1{font-size:20px}
+  .stat b{font-size:22px}
+  .vt.hero .vt-n b{font-size:40px}
+  .brand-t span{display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .btn,.in,.nav a,.chips button,.seg button,.mt{transition:border-color .15s,background-color .15s,color .15s,filter .15s}
+  .meter i{transition:background-color .25s}
+  dialog[open]{animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+  dialog[open] .ok{animation:pop .38s .08s cubic-bezier(.2,.9,.3,1.4) backwards}
+  @keyframes pop{from{transform:scale(.94);opacity:.4}to{transform:none;opacity:1}}
+}
+</style>
+
+<!-- ============ TELA DE LOGIN ============ -->
+<div id="view-login" style="min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--frame)" hidden>
+  <div class="sheet" style="max-width:440px;width:100%;border-radius:28px;padding:36px 32px;display:flex;flex-direction:column;gap:24px;box-shadow:var(--sh-2)">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px">
+      <span class="mark" style="width:52px;height:52px;border-radius:18px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:30px;height:30px"><path d="M3 12.5h4l2.3-6 4.2 12 2.4-6H21"/></svg></span>
+      <div>
+        <h1 style="font:700 22px/1.2 var(--f-num);letter-spacing:-.02em">EcoClinic</h1>
+        <p style="font-size:13.5px;color:var(--muted);margin-top:4px">Triagem & Medicina do Trabalho</p>
+      </div>
+    </div>
+
+    <form id="form-login" style="display:flex;flex-direction:column;gap:16px" novalidate autocomplete="on">
+      <label class="f"><span>E-mail profissional</span>
+        <input class="in lg" id="l-email" type="email" required autocomplete="username" placeholder="seu.email@ecoclinic.com.br">
+      </label>
+      <label class="f"><span>Senha</span>
+        <input class="in lg" id="l-senha" type="password" required autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <span class="err" id="l-erro" style="text-align:center"></span>
+      <button class="btn pri big" id="b-login" type="submit" style="width:100%;margin-top:6px">Entrar no sistema</button>
+    </form>
+
+    <div style="border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:12px;color:var(--muted);text-align:center">Acesso rápido para demonstração:</span>
+      <div style="display:grid;grid-template-columns:1fr;gap:6px">
+        <button class="btn sm" type="button" data-demo-user="enf" style="justify-content:flex-start;padding:8px 12px">👩‍⚕️ Enfermagem (Maria Eduarda)</button>
+        <button class="btn sm" type="button" data-demo-user="med" style="justify-content:flex-start;padding:8px 12px">🩺 Médico do Trabalho (Dr. Roberto)</button>
+        <button class="btn sm" type="button" data-demo-user="adm" style="justify-content:flex-start;padding:8px 12px">⚙️ Administrador (Dra. Patrícia)</button>
+      </div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:6px;font-size:13px">
+        <a href="/" style="color:var(--accent);text-decoration:none;font-weight:600">← Portal Integrado</a>
+        <span style="color:var(--line)">|</span>
+        <a href="/presenca/" style="color:var(--ink-2);text-decoration:none;font-weight:500">Lista de Presença</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <aside class="side">
+    <div class="brand">
+      <a href="/" class="mark" title="Voltar ao Portal Integrado" style="text-decoration:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5h4l2.3-6 4.2 12 2.4-6H21"/></svg></a>
+      <div class="brand-t"><b id="brand-name">EcoClinic</b><span id="brand-sub">Triagem de enfermagem</span></div>
+    </div>
+    <nav class="nav" aria-label="Seções">
+      <a href="#triagem" data-tab="triagem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Nova triagem</span></a>
+      <a href="#atendimentos" data-tab="atendimentos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg><span>Atendimentos</span></a>
+      <a href="#painel" data-tab="painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20v-8M12 20V5M19 20v-5"/></svg><span>Painel</span></a>
+      <a href="#config" data-tab="config"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg><span>Configurações</span></a>
+      <a href="/presenca/" title="Abrir módulo de Lista de Presença e Massoterapia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg><span>Presença</span></a>
+    </nav>
+    <span class="status" id="status" role="status"><i></i><span id="status-t">Conectando…</span></span>
+
+    <div class="user-badge" id="user-badge" style="margin-top:auto;padding:12px;background:var(--sheet);border-radius:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--sh-1);border:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="av" id="user-avatar" style="width:36px;height:36px;font-size:13px;border-radius:12px">ME</span>
+        <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
+          <strong id="user-nome" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Enfermeiro</strong>
+          <span id="user-cargo" style="font-size:11.5px;color:var(--muted)">Enfermagem</span>
+        </div>
+      </div>
+      <button class="btn sm danger" id="b-logout" type="button" style="width:100%;font-size:12px;padding:6px 8px">Sair do sistema</button>
+    </div>
+  </aside>
+
+  <main class="sheet">
+    <div class="banner warn" id="bn-local" hidden>
+      <span><b>Os registros ficam salvos só neste navegador.</b> Outros computadores não enxergam estas triagens. Em “Configurações” você exporta uma cópia.</span>
+    </div>
+    <div class="banner warn" id="bn-ro" hidden>
+      <span><b>Seu acesso não permite gravar triagens.</b> Peça ao responsável pelo sistema o nível “Colaborador”.</span>
+    </div>
+
+    <!-- ============ NOVA TRIAGEM ============ -->
+    <section class="view" id="v-triagem">
+      <div class="vh">
+        <h1 id="tri-title">Nova triagem</h1>
+        <p>Registre as medidas, salve e mostre o QR Code ao paciente. Ele leva a ficha no celular até o médico.</p>
+      </div>
+      <div class="tri">
+        <form class="form" id="form" novalidate autocomplete="off">
+          <!-- Integração com Lista de Presença -->
+          <div class="banner" id="presenca-linked-banner" hidden>
+            <span id="presenca-linked-text"><b>Vinculado à Lista de Presença</b></span>
+            <button class="btn sm" type="button" id="b-desvincular-presenca">Desvincular</button>
+          </div>
+          <section class="blk" id="presenca-queue-box" style="background:var(--field);padding:14px 16px;border-radius:18px" hidden>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:600;color:var(--ink-2)">Aguardando triagem na Lista de Presença (clique para preencher):</span>
+              <a href="/presenca/" style="font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600">Ver presença</a>
+            </div>
+            <div class="chips" id="presenca-queue-chips"></div>
+          </section>
+
+          <section class="blk">
+            <h2>Paciente</h2>
+            <label class="f"><span>Nome completo</span>
+              <input class="in lg" id="i-nome" maxlength="80" autocomplete="off" placeholder="Como está no documento">
+              <span class="err" id="e-nome"></span>
+            </label>
+            <div class="g2">
+              <label class="f"><span>Data de nascimento<em>opcional</em></span>
+                <input class="in" id="i-dn" type="date" min="1920-01-01">
+                <span class="err" id="e-dn"></span>
+              </label>
+              <div class="f"><span>Sexo<em>opcional</em></span>
+                <div class="seg" data-choice="i-sx" role="group" aria-label="Sexo"><button type="button" data-v="M">Masculino</button><button type="button" data-v="F">Feminino</button></div>
+                <input type="hidden" id="i-sx" value="">
+              </div>
+            </div>
+            <label class="f"><span>Empresa<em>opcional</em></span>
+              <input class="in" id="i-emp" maxlength="60" list="dl-emp" placeholder="Empresa que encaminhou">
+              <datalist id="dl-emp"></datalist>
+            </label>
+            <div class="f"><span>Tipo de exame<em>opcional</em></span>
+              <div class="chips" data-choice="i-tipo" role="group" aria-label="Tipo de exame"></div>
+              <input type="hidden" id="i-tipo" value="">
+            </div>
+          </section>
+
+          <section class="blk">
+            <h2>Medidas</h2>
+            <div class="mgrid">
+              <div class="mt pa">
+                <span class="mt-l">Pressão arterial</span>
+                <span class="mt-r">
+                  <input id="i-pas" inputmode="numeric" maxlength="5" placeholder="120" aria-label="Pressão sistólica em mmHg">
+                  <span class="sl" aria-hidden="true">/</span>
+                  <input id="i-pad" inputmode="numeric" maxlength="5" placeholder="80" aria-label="Pressão diastólica em mmHg">
+                  <span class="un">mmHg</span>
+                </span>
+                <span class="err" id="e-pas"></span><span class="err" id="e-pad"></span>
+              </div>
+              <label class="mt">
+                <span class="mt-l">Freq. cardíaca</span>
+                <span class="mt-r"><input id="i-fc" inputmode="numeric" maxlength="3" placeholder="72"><span class="un">bpm</span></span>
+                <span class="err" id="e-fc"></span>
+              </label>
+              <label class="mt">
+                <span class="mt-l">Peso</span>
+                <span class="mt-r"><input id="i-kg" inputmode="decimal" maxlength="6" placeholder="78,5"><span class="un">kg</span></span>
+                <span class="err" id="e-kg"></span>
+              </label>
+              <label class="mt">
+                <span class="mt-l">Altura</span>
+                <span class="mt-r"><input id="i-cm" inputmode="decimal" maxlength="5" placeholder="172"><span class="un">cm</span></span>
+                <span class="err" id="e-cm"></span>
+              </label>
+            </div>
+            <p class="note">Pode digitar a pressão como “12” por “8”: o sistema registra 120/80 mmHg. Altura aceita 172 ou 1,72.</p>
+          </section>
+
+          <section class="blk">
+            <h2>Registro</h2>
+            <label class="f"><span>Observações para o médico<em>opcional</em></span>
+              <textarea class="in" id="i-obs" maxlength="200" rows="2" placeholder="Ex.: refere uso de anti-hipertensivo; medida repetida após 5 min de repouso"></textarea>
+            </label>
+            <label class="f"><span>Profissional responsável pela triagem</span>
+              <input class="in" id="i-enf" maxlength="60" placeholder="Seu nome">
+            </label>
+          </section>
+
+          <div class="actions">
+            <button class="btn pri big" id="b-salvar" type="submit">Salvar e gerar QR Code</button>
+            <button class="btn big" id="b-limpar" type="button">Limpar</button>
+            <span class="err" id="e-form" role="alert"></span>
+          </div>
+        </form>
+
+        <aside class="prev" aria-label="Leitura das medidas">
+          <div id="prev-vit"></div>
+          <div class="alert" id="prev-alert" hidden></div>
+          <p class="note">Faixas de pressão conforme a Diretriz Brasileira de Hipertensão Arterial 2025 e IMC conforme a OMS (adultos). Medida única de triagem não é diagnóstico.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ ATENDIMENTOS ============ -->
+    <section class="view" id="v-atendimentos" hidden>
+      <div class="vh">
+        <h1>Atendimentos</h1>
+        <p>Fila de triagens do dia. O médico pode conferir aqui as medidas originais antes de emitir o ASO.</p>
+      </div>
+      <div class="banner" data-demo hidden>
+        <span><b>Dados de exemplo.</b> Pacientes fictícios para mostrar o sistema em uso. Somem quando a primeira triagem real for salva.</span>
+        <button class="btn sm" type="button" data-act="demo-off">Ocultar exemplos</button>
+      </div>
+      <div class="blk">
+        <div class="filters">
+          <label class="f"><span>Data</span>
+            <input class="in" id="at-data" type="date">
+          </label>
+          <label class="f grow"><span>Buscar paciente em todas as datas</span>
+            <input class="in" id="at-q" type="search" placeholder="Nome ou código da triagem">
+          </label>
+        </div>
+        <p class="note" id="at-count"></p>
+        <ul class="at-list" id="at-list"></ul>
+      </div>
+    </section>
+
+    <!-- ============ PAINEL ============ -->
+    <section class="view" id="v-painel" hidden>
+      <div class="vh">
+        <h1>Painel estatístico</h1>
+        <p>Indicadores agregados das pessoas avaliadas na triagem, sem identificação individual.</p>
+      </div>
+      <div class="banner" data-demo hidden>
+        <span><b>Dados de exemplo.</b> Os números abaixo são fictícios e servem só para mostrar o painel. Somem quando a primeira triagem real for salva.</span>
+        <button class="btn sm" type="button" data-act="demo-off">Ocultar exemplos</button>
+      </div>
+      <div class="pf">
+        <div class="chips" data-choice="p-per" data-req role="group" aria-label="Período">
+          <button type="button" data-v="30">30 dias</button><button type="button" data-v="90">90 dias</button><button type="button" data-v="365">12 meses</button><button type="button" data-v="ano">Este ano</button><button type="button" data-v="tudo">Tudo</button><button type="button" data-v="custom">Personalizado</button>
+        </div>
+        <input type="hidden" id="p-per" value="365">
+        <div class="filters">
+          <label class="f" id="p-de-w" hidden><span>De</span><input class="in" id="p-de" type="date"></label>
+          <label class="f" id="p-ate-w" hidden><span>Até</span><input class="in" id="p-ate" type="date"></label>
+          <label class="f"><span>Empresa</span>
+            <select class="in" id="p-emp"><option value="">Todas</option></select>
+          </label>
+          <label class="f"><span>Tipo de exame</span>
+            <select class="in" id="p-tipo"><option value="">Todos</option></select>
+          </label>
+          <div class="f"><span>Sexo</span>
+            <div class="seg" data-choice="p-sx" role="group" aria-label="Sexo"><button type="button" data-v="M">Masculino</button><button type="button" data-v="F">Feminino</button></div>
+            <input type="hidden" id="p-sx" value="">
+          </div>
+        </div>
+      </div>
+      <div id="p-body" class="view"></div>
+    </section>
+
+    <!-- ============ CONFIGURAÇÕES ============ -->
+    <section class="view" id="v-config" hidden>
+      <div class="vh">
+        <h1>Configurações</h1>
+        <p>Identificação da clínica, funcionamento do QR Code e cópia dos dados.</p>
+      </div>
+      <div class="cfg">
+        <form class="blk" id="cfg-form" novalidate>
+          <h2>Clínica e QR Code</h2>
+          <label class="f"><span>Nome da clínica</span>
+            <input class="in" id="c-clinica" maxlength="50">
+          </label>
+          <label class="f"><span>Unidade<em>opcional</em></span>
+            <input class="in" id="c-unidade" maxlength="40" placeholder="Ex.: Mossoró">
+          </label>
+          <label class="f"><span>O que o QR Code abre no celular do paciente</span>
+            <select class="in" id="c-modo">
+              <option value="texto">Texto com as medidas (funciona sem internet)</option>
+              <option value="link">Ficha visual (precisa do endereço público abaixo)</option>
+            </select>
+          </label>
+          <label class="f"><span>Endereço público do sistema</span>
+            <input class="in" id="c-url" type="url" maxlength="200" placeholder="https://triagem.suaclinica.com.br/">
+            <span class="note">Endereço em que esta página abre no celular do paciente, sem login. Só é usado na opção “Ficha visual”.</span>
+          </label>
+          <div class="actions">
+            <button class="btn pri" type="submit">Salvar configurações</button>
+          </div>
+        </form>
+
+        <div class="view">
+          <div class="blk">
+            <h2>Dados</h2>
+            <p id="c-store">Verificando onde os registros são guardados…</p>
+            <p class="note" id="c-total"></p>
+            <div class="actions">
+              <button class="btn" type="button" id="b-csv">Exportar planilha completa</button>
+              <button class="btn" type="button" id="b-csv-anon">Exportar sem identificação</button>
+            </div>
+            <p class="note">As duas saem em CSV. A versão sem identificação não leva nome, data de nascimento, observações nem profissional. Use essa para análises e divulgação.</p>
+          </div>
+          <div class="blk">
+            <h2>Cuidados com dados de saúde (LGPD)</h2>
+            <ul class="lgpd">
+              <li>Medidas de saúde são dados pessoais sensíveis. Dê acesso ao sistema apenas à equipe de saúde.</li>
+              <li>Divulgue somente números agregados. O painel já oculta grupos com menos de 5 pessoas.</li>
+              <li>Informe o paciente, no atendimento, de que as medidas podem compor estatísticas sem identificação.</li>
+              <li>O QR Code carrega as medidas da ficha. Quem fotografar o código consegue ler os valores.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="ficha" hidden></div>
+
+<dialog id="dlg" aria-labelledby="dlg-nome">
+  <div class="dlg">
+    <div class="dlg-qr">
+      <div class="qr" id="dlg-qr"></div>
+      <p class="note" id="dlg-modo"></p>
+    </div>
+    <div class="dlg-side">
+      <div class="dlg-h">
+        <span class="ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div>
+          <p class="note" id="dlg-eyebrow">Triagem salva</p>
+          <h2 id="dlg-nome"></h2>
+          <p class="note" id="dlg-meta"></p>
+        </div>
+      </div>
+      <div id="dlg-vit"></div>
+      <div class="actions">
+        <button class="btn pri" type="button" id="dlg-nova">Próximo paciente</button>
+        <a class="btn" id="dlg-presenca" href="/presenca/">Enviar p/ Presença</a>
+        <a class="btn" id="dlg-ficha" href="#triagem">Ver ficha do paciente</a>
+        <button class="btn" type="button" id="dlg-fechar">Fechar</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div id="tip" hidden></div>
+<div id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= utilidades ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const HOSTED = !!(window.claude && typeof window.claude.use === 'function');
+const K_DATA = 'ecoclinic.triagens.v1', K_CFG = 'ecoclinic.config.v1', K_ENF = 'ecoclinic.enf';
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+};
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const f0 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+const f1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const f2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const p2 = n => String(n).padStart(2, '0');
+const dayKey = ts => { const d = new Date(ts); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); };
+const fData = ts => { const d = new Date(ts); return p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + d.getFullYear(); };
+const fHora = ts => { const d = new Date(ts); return p2(d.getHours()) + ':' + p2(d.getMinutes()); };
+const fDn = dn => dn && /^\d{4}-\d{2}-\d{2}$/.test(dn) ? dn.slice(8) + '/' + dn.slice(5, 7) + '/' + dn.slice(0, 4) : '';
+const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const norm = s => semAcento(s).toLowerCase().replace(/\s+/g, ' ').trim();
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function idade(dn, ts) {
+  if (!dn || !/^\d{4}-\d{2}-\d{2}$/.test(dn)) return null;
+  const [y, m, d] = dn.split('-').map(Number), r = new Date(ts);
+  let a = r.getFullYear() - y;
+  if (r.getMonth() + 1 < m || (r.getMonth() + 1 === m && r.getDate() < d)) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
+function iniciais(n) {
+  const p = String(n || '').trim().split(/\s+/).filter(Boolean);
+  return ((p[0] || '?').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toUpperCase();
+}
+let toastT = 0;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 4200);
+}
+
+/* ================= escolhas (segmentos e chips) ================= */
+function setChoice(id, v) {
+  const inp = $('#' + id); inp.value = v;
+  $$('[data-choice="' + id + '"] button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v ? 'true' : 'false'));
+}
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-choice] button'); if (!b) return;
+  const box = b.closest('[data-choice]'), id = box.dataset.choice, cur = $('#' + id).value;
+  const v = (cur === b.dataset.v && !box.hasAttribute('data-req')) ? '' : b.dataset.v;
+  if (v === cur) return;
+  setChoice(id, v);
+  $('#' + id).dispatchEvent(new Event('change', { bubbles: true }));
+});
+
+/* ================= classificações ================= */
+const TIPOS = ['Admissional', 'Periódico', 'Retorno ao trabalho', 'Mudança de riscos ocupacionais', 'Demissional'];
+const PA = {
+  baixa:  { l: 'Abaixo de 90/60',        c: 'low',     f: '< 90 ou < 60' },
+  normal: { l: 'Normal',                 c: 'good',    f: '< 120 e < 80' },
+  pre:    { l: 'Pré-hipertensão',        c: 'warn',    f: '120–139 e/ou 80–89' },
+  e1:     { l: 'Hipertensão estágio 1',  c: 'serious', f: '140–159 e/ou 90–99' },
+  e2:     { l: 'Hipertensão estágio 2',  c: 'crit',    f: '160–179 e/ou 100–109' },
+  e3:     { l: 'Hipertensão estágio 3',  c: 'crit2',   f: '≥ 180 e/ou ≥ 110' }
+};
+const IMC = {
+  baixo: { l: 'Baixo peso',          c: 'low',     f: '< 18,5' },
+  ok:    { l: 'Peso adequado',       c: 'good',    f: '18,5–24,9' },
+  sobre: { l: 'Sobrepeso',           c: 'warn',    f: '25–29,9' },
+  ob1:   { l: 'Obesidade grau I',    c: 'serious', f: '30–34,9' },
+  ob2:   { l: 'Obesidade grau II',   c: 'crit',    f: '35–39,9' },
+  ob3:   { l: 'Obesidade grau III',  c: 'crit2',   f: '≥ 40' }
+};
+const FC = {
+  baixa: { l: 'Abaixo de 60 bpm', c: 'low',     f: '< 60' },
+  ok:    { l: '60 a 100 bpm',     c: 'good',    f: '60–100' },
+  alta:  { l: 'Acima de 100 bpm', c: 'serious', f: '> 100' }
+};
+function classPA(s, d) {
+  if (s >= 180 || d >= 110) return 'e3';
+  if (s >= 160 || d >= 100) return 'e2';
+  if (s >= 140 || d >= 90) return 'e1';
+  if (s >= 120 || d >= 80) return 'pre';
+  if (s < 90 || d < 60) return 'baixa';
+  return 'normal';
+}
+const calcIMC = (kg, cm) => (kg > 0 && cm > 0) ? kg / Math.pow(cm / 100, 2) : 0;
+function classIMC(i) { return i < 18.5 ? 'baixo' : i < 25 ? 'ok' : i < 30 ? 'sobre' : i < 35 ? 'ob1' : i < 40 ? 'ob2' : 'ob3'; }
+function classFC(f) { return f < 60 ? 'baixa' : f <= 100 ? 'ok' : 'alta'; }
+
+function mostrador(meta, key) {
+  return '<span class="meter" aria-hidden="true">' + Object.keys(meta).map(k => '<i class="' + (k === key ? 'on c-' + meta[k].c : '') + '"></i>').join('') + '</span>' +
+    '<span class="vt-c">' + (key ? '<i class="dot c-' + meta[key].c + '"></i>' + esc(meta[key].l) : 'Aguardando medida') + '</span>';
+}
+function medidasHTML(m) {
+  const temPA = m.pas > 0 && m.pad > 0, imc = calcIMC(m.kg, m.cm);
+  return '<div class="vit">' +
+    '<div class="vt hero"><span class="vt-l">Pressão arterial</span><div class="vt-n"><b>' + (temPA ? m.pas + '<i>/</i>' + m.pad : '—') + '</b><span>mmHg</span></div>' + mostrador(PA, temPA ? classPA(m.pas, m.pad) : null) + '</div>' +
+    '<div class="vt"><span class="vt-l">Frequência cardíaca</span><div class="vt-n"><b>' + (m.fc > 0 ? m.fc : '—') + '</b><span>bpm</span></div>' + mostrador(FC, m.fc > 0 ? classFC(m.fc) : null) + '</div>' +
+    '<div class="vt"><span class="vt-l">IMC</span><div class="vt-n"><b>' + (imc ? f1.format(imc) : '—') + '</b><span>kg/m²</span></div>' + mostrador(IMC, imc ? classIMC(imc) : null) + '</div>' +
+    '<div class="vt sm"><span class="vt-l">Peso</span><div class="vt-n"><b>' + (m.kg > 0 ? f1.format(m.kg) : '—') + '</b><span>kg</span></div></div>' +
+    '<div class="vt sm"><span class="vt-l">Altura</span><div class="vt-n"><b>' + (m.cm > 0 ? f2.format(m.cm / 100) : '—') + '</b><span>m</span></div></div>' +
+    '</div>';
+}
+
+/* ================= estado ================= */
+const S = {
+  store: 'pending',   // pending | db | local | erro
+  loaded: false, db: null, real: [], demo: null, showDemo: true,
+  view: 'triagem', editing: null, started: false, delArmed: null,
+  linkedPresencaId: null, pendingPresencas: [], sharedEmpresas: [],
+  cfg: {
+    clinica: 'EcoSafety & EcoClinic — Saúde Ocupacional', unidade: '',
+    url: (!HOSTED && /^https?:$/.test(location.protocol)) ? location.origin + location.pathname : '',
+    modo: (!HOSTED && /^https?:$/.test(location.protocol)) ? 'link' : 'texto'
+  }
+};
+const usandoDemo = () => S.loaded && !S.real.length && S.showDemo;
+const recs = () => S.real.length ? S.real : (usandoDemo() ? (S.demo || (S.demo = gerarDemo())) : []);
+const cod = r => (r && (r.codigo || r.codigo_acesso)) || String(r && r.id || '').slice(-5).toUpperCase();
+
+function limpaRec(r) {
+  return {
+    id: String(r.id || ''), codigo: (r && (r.codigo || r.codigo_acesso)) || String(r && r.id || '').slice(-5).toUpperCase(),
+    presenca_id: r.presenca_id || null,
+    ts: num(r.ts), n: String(r.n || r.nome_paciente || '').slice(0, 80), dn: String(r.dn || r.data_nascimento || ''), sx: r.sx === 'M' || r.sx === 'F' ? r.sx : '',
+    emp: String(r.emp || r.empresa || '').slice(0, 60), tipo: String(r.tipo || r.tipo_exame || '').slice(0, 40),
+    kg: num(r.kg || r.peso_kg), cm: num(r.cm || r.altura_cm), pas: num(r.pas || r.pa_sistolica), pad: num(r.pad || r.pa_diastolica), fc: num(r.fc || r.freq_cardiaca),
+    obs: String(r.obs || r.observacoes || '').slice(0, 200), enf: String(r.enf || r.nome_profissional || '').slice(0, 60), x: r.x ? 1 : 0, ed: num(r.ed || r.editado_em)
+  };
+}
+function setReal(list) {
+  S.real = list.filter(r => r && !r.x && r.ts && r.id).map(limpaRec).sort((a, b) => b.ts - a.ts);
+  S.loaded = true;
+  renderDados();
+}
+
+/* ================= autenticação e controle de acesso ================= */
+const K_TOKEN = 'ecoclinic.auth.token';
+const K_USER = 'ecoclinic.auth.user';
+const API_BASE = (location.protocol === 'file:') ? 'http://localhost:3000' : '';
+
+function getAuthToken() { return localStorage.getItem(K_TOKEN); }
+function getAuthUser() { try { return JSON.parse(localStorage.getItem(K_USER)); } catch (e) { return null; } }
+function setAuth(token, user) {
+  if (token && user) {
+    localStorage.setItem(K_TOKEN, token);
+    localStorage.setItem(K_USER, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(K_TOKEN);
+    localStorage.removeItem(K_USER);
+  }
+  renderAuthUser();
+}
+async function apiFetch(url, options = {}) {
+  const fullUrl = url.startsWith('http') ? url : (API_BASE + url);
+  const token = getAuthToken();
+  options.headers = options.headers || {};
+  if (token && token !== 'offline-token') {
+    options.headers['Authorization'] = 'Bearer ' + token;
+  }
+  const res = await fetch(fullUrl, options);
+  if (res.status === 401 && !location.hash.startsWith('#f.')) {
+    setAuth(null, null);
+    verificarAcesso();
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+  return res;
+}
+function renderAuthUser() {
+  const user = getAuthUser();
+  const badge = $('#user-badge');
+  if (!badge) return;
+  if (!user) { badge.hidden = true; return; }
+  badge.hidden = false;
+  $('#user-avatar').textContent = iniciais(user.nome);
+  $('#user-nome').textContent = user.nome;
+  const cargoLabels = {
+    administrador: 'Administrador(a)',
+    enfermeiro: 'Enfermeiro(a)',
+    tecnico_enfermagem: 'Téc. Enfermagem',
+    medico_trabalho: 'Médico do Trabalho'
+  };
+  $('#user-cargo').textContent = cargoLabels[user.cargo] || user.cargo;
+  if (F && F.enf && !F.enf.value) {
+    F.enf.value = user.nome;
+  }
+}
+function verificarAcesso() {
+  const h = location.hash.slice(1);
+  if (h.slice(0, 2) === 'f.') {
+    $('#view-login').hidden = true;
+    return true;
+  }
+  const user = getAuthUser();
+  if (!user || !getAuthToken()) {
+    $('#app').hidden = true;
+    $('#ficha').hidden = true;
+    $('#view-login').hidden = false;
+    return false;
+  }
+  $('#view-login').hidden = true;
+  renderAuthUser();
+  return true;
+}
+
+/* ================= armazenamento ================= */
+let storeReady = null;
+function ensureStore() {
+  if (storeReady) return storeReady;
+  S.started = true;
+  storeReady = initStore();
+  return storeReady;
+}
+function lerLocal() {
+  const all = LS.get(K_DATA, {}), out = [];
+  for (const d in all) for (const id in (all[d] || {})) out.push(all[d][id]);
+  setReal(out);
+}
+async function carregarIntegracaoPresenca() {
+  try {
+    const [resPend, resEmp] = await Promise.all([
+      apiFetch('/api/presencas/pendentes-triagem').catch(() => null),
+      apiFetch('/api/integracao/empresas').catch(() => null)
+    ]);
+    if (resPend && resPend.ok) {
+      const dataPend = await resPend.json();
+      S.pendingPresencas = Array.isArray(dataPend.items) ? dataPend.items : [];
+      renderFilaPresenca();
+    }
+    if (resEmp && resEmp.ok) {
+      const dataEmp = await resEmp.json();
+      if (Array.isArray(dataEmp.empresas)) {
+        S.sharedEmpresas = dataEmp.empresas;
+        renderDados();
+      }
+    }
+  } catch (e) { /* silencioso */ }
+}
+
+function selecionarDaPresenca(item) {
+  if (!item) return;
+  S.linkedPresencaId = item.id;
+  if (F.nome) F.nome.value = item.name || '';
+  if (F.emp) F.emp.value = item.company || '';
+  const bn = $('#presenca-linked-banner');
+  if (bn) {
+    $('#presenca-linked-text').innerHTML = '<b>Vinculado à Lista de Presença:</b> ' + esc(item.name) + (item.company ? ' (' + esc(item.company) + ')' : '');
+    bn.hidden = false;
+  }
+  renderFilaPresenca();
+  setTimeout(() => { if (F.pas) F.pas.focus(); }, 40);
+}
+
+function limparVinculoPresenca() {
+  S.linkedPresencaId = null;
+  const bn = $('#presenca-linked-banner');
+  if (bn) bn.hidden = true;
+  renderFilaPresenca();
+}
+
+function renderFilaPresenca() {
+  const box = $('#presenca-queue-box'), chips = $('#presenca-queue-chips');
+  if (!box || !chips) return;
+  const disponiveis = S.pendingPresencas.filter(p => p.id !== S.linkedPresencaId).slice(0, 8);
+  if (!disponiveis.length) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  chips.innerHTML = disponiveis.map(p =>
+    '<button type="button" data-presenca-pick="' + esc(p.id) + '">' + esc(p.name) + (p.company ? ' • ' + esc(p.company) : '') + '</button>'
+  ).join('');
+}
+
+async function verificarParametroFromPresenca() {
+  try {
+    const qs = new URLSearchParams(location.search);
+    const qId = qs.get('from_presenca');
+    if (qId) {
+      sessionStorage.setItem('ecoclinic.from_presenca', qId);
+      history.replaceState({}, document.title, location.pathname + location.hash);
+    }
+    const targetId = sessionStorage.getItem('ecoclinic.from_presenca');
+    if (!targetId || !getAuthToken()) return;
+    sessionStorage.removeItem('ecoclinic.from_presenca');
+
+    const res = await apiFetch('/api/presencas/' + encodeURIComponent(targetId));
+    if (res.ok) {
+      const item = await res.json();
+      selecionarDaPresenca(item);
+      toast('Dados de ' + item.name + ' importados da Lista de Presença.');
+    }
+  } catch (e) { /* silencioso */ }
+}
+
+async function initStore() {
+  try {
+    // 1. Carrega configurações do servidor
+    const resCfg = await apiFetch('/api/config');
+    if (resCfg.ok) {
+      const cfg = await resCfg.json();
+      aplicarCfg(cfg);
+    }
+
+    // 2. Carrega triagens do banco de dados
+    const resTri = await apiFetch('/api/triagens');
+    if (resTri.ok) {
+      const lista = await resTri.json();
+      S.store = 'db';
+      setReal(lista);
+    } else {
+      throw new Error('Falha ao obter triagens do servidor');
+    }
+
+    await carregarIntegracaoPresenca();
+    await verificarParametroFromPresenca();
+  } catch (e) {
+    console.warn('Servidor local/API indisponível, usando armazenamento do navegador:', e);
+    S.store = 'local';
+    aplicarCfg(LS.get(K_CFG, {}));
+    lerLocal();
+  }
+  renderStatus();
+}
+function aplicarCfg(c) {
+  if (!c || typeof c !== 'object') return;
+  if (typeof c.clinica === 'string' && c.clinica.trim()) S.cfg.clinica = c.clinica.slice(0, 50);
+  if (typeof c.unidade === 'string') S.cfg.unidade = c.unidade.slice(0, 40);
+  if (typeof c.url === 'string') S.cfg.url = c.url.slice(0, 200);
+  if (c.modo === 'link' || c.modo === 'texto') S.cfg.modo = c.modo;
+  renderMarca(); preencherCfg();
+}
+async function persistir(rec) {
+  await ensureStore();
+
+  if (S.store === 'db') {
+    if (rec.x === 1) {
+      // Exclusão
+      const res = await apiFetch('/api/triagens/' + rec.id, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Falha ao excluir no banco de dados.');
+      S.real = S.real.filter(r => r.id !== rec.id);
+      renderDados();
+      return;
+    } else if (S.editing) {
+      // Retificação
+      const res = await apiFetch('/api/triagens/' + rec.id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rec)
+      });
+      if (!res.ok) throw new Error('Falha ao salvar retificação no banco.');
+      const idx = S.real.findIndex(r => r.id === rec.id);
+      if (idx >= 0) S.real[idx] = limpaRec(rec);
+      renderDados();
+      return;
+    } else {
+      // Nova Triagem
+      const res = await apiFetch('/api/triagens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rec)
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Erro ao registrar no banco.');
+      }
+      const resp = await res.json();
+      const novo = limpaRec(resp.data || rec);
+      if (resp.data && resp.data.codigo) novo.codigo_acesso = resp.data.codigo;
+      if (resp.data && resp.data.token) novo.token_qrcode = resp.data.token;
+      
+      const existeIdx = S.real.findIndex(r => r.id === novo.id);
+      if (existeIdx >= 0) S.real[existeIdx] = novo;
+      else S.real.unshift(novo);
+      
+      renderDados();
+      return novo;
+    }
+  }
+
+  // Armazenamento local de contingência caso o servidor caia
+  const day = dayKey(rec.ts);
+  const all = LS.get(K_DATA, {});
+  (all[day] || (all[day] = {}))[rec.id] = rec;
+  if (!LS.set(K_DATA, all)) throw { code: 'local' };
+  lerLocal();
+}
+function msgErro(e) {
+  if (e && e.message) return e.message;
+  return 'Não foi possível salvar agora. Confira a conexão com o servidor e tente novamente.';
+}
+
+// Sincronização periódica em segundo plano (multi-estações / enfermagem + médico)
+async function sincronizarTriagens() {
+  if (S.store !== 'db' || !getAuthToken()) return;
+  try {
+    const res = await apiFetch('/api/triagens');
+    if (res.ok) {
+      const lista = await res.json();
+      setReal(lista);
+    }
+    await carregarIntegracaoPresenca();
+  } catch (e) {
+    // ignora falhas pontuais de polling
+  }
+}
+setInterval(sincronizarTriagens, 10000);
+window.addEventListener('focus', sincronizarTriagens);
+
+/* ================= dados de exemplo (só em memória) ================= */
+function gerarDemo() {
+  let a = 20261006;
+  const r = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const g = () => { let u = 0; for (let i = 0; i < 6; i++) u += r(); return (u - 3) / Math.SQRT1_2; };
+  const emps = [['Salineira Exemplo', 2], ['Construtora Exemplo', 4], ['Revenda de GLP Exemplo', 0], ['Indústria Exemplo', 1], ['Prestadora de Serviços Exemplo', -2]];
+  const tipos = [0, 1, 1, 1, 1, 2, 3, 4];
+  const out = [], now = Date.now();
+  for (let i = 0; i < 468; i++) {
+    const d = new Date(now);
+    if (i < 8) { d.setTime(now - (i * 23 + 6) * 60000); }
+    else {
+      d.setDate(d.getDate() - 1 - Math.floor(r() * 330));
+      if (d.getDay() === 0) d.setDate(d.getDate() - 2); else if (d.getDay() === 6) d.setDate(d.getDate() - 1);
+      d.setHours(7 + Math.floor(r() * 9), Math.floor(r() * 60), 0, 0);
+    }
+    const e = emps[Math.floor(r() * emps.length)];
+    const sx = r() < 0.68 ? 'M' : 'F', id = 18 + Math.floor(Math.pow(r(), 1.25) * 44);
+    const cm = Math.round(sx === 'M' ? 172 + g() * 7 : 160 + g() * 6);
+    const imc = Math.max(17, Math.min(46, 26.4 + (id - 35) * 0.05 + g() * 4.4));
+    const kg = Math.round(imc * Math.pow(cm / 100, 2) * 10) / 10;
+    let pas = Math.round(119 + e[1] + (id - 35) * 0.45 + (imc - 26) * 1.1 + g() * 12);
+    let pad = Math.round(76 + e[1] * 0.5 + (id - 35) * 0.15 + (imc - 26) * 0.6 + g() * 8);
+    pas = Math.max(86, Math.min(212, pas)); pad = Math.max(52, Math.min(pas - 22, pad));
+    const fc = Math.max(46, Math.min(128, Math.round(74 + g() * 10)));
+    out.push({
+      id: 'ex' + (10000 + i).toString(36), ts: d.getTime(), n: 'Paciente exemplo ' + String(i + 1).padStart(3, '0'),
+      dn: (d.getFullYear() - id) + '-' + p2(1 + Math.floor(r() * 12)) + '-' + p2(1 + Math.floor(r() * 27)), sx,
+      emp: e[0], tipo: TIPOS[tipos[Math.floor(r() * tipos.length)]], kg, cm, pas, pad, fc, obs: '', enf: 'Enfermagem (exemplo)', x: 0, ed: 0, demo: 1
+    });
+  }
+  return out.sort((x, y) => y.ts - x.ts);
+}
+
+/* ================= QR Code e ficha ================= */
+const SAL = 'ecoclinic-triagem-2026';
+const MARCA = '<span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12.5h4l2.3-6 4.2 12 2.4-6H21"/></svg></span>';
+function b64u(str) {
+  const by = new TextEncoder().encode(str); let bin = '';
+  for (let i = 0; i < by.length; i++) bin += String.fromCharCode(by[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function unb64u(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+  const bin = atob(s), by = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) by[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(by);
+}
+function fnv(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); }
+function fichaToken(r) {
+  const p = [1, cod(r), r.n, r.dn || '', r.sx || '', r.kg, r.cm, r.pas, r.pad, r.fc, Math.floor(r.ts / 60000), r.enf || '', S.cfg.clinica || '', r.emp || '', r.tipo || '', (r.obs || '').slice(0, 120)];
+  const b = b64u(JSON.stringify(p));
+  return 'f.' + b + '.' + fnv(b + SAL);
+}
+function lerFicha(hash) {
+  try {
+    const parts = hash.split('.');
+    if (parts.length !== 3 || parts[0] !== 'f' || fnv(parts[1] + SAL) !== parts[2]) return null;
+    const p = JSON.parse(unb64u(parts[1]));
+    if (!Array.isArray(p) || p[0] !== 1) return null;
+    return { codigo: String(p[1]), n: String(p[2]), dn: String(p[3] || ''), sx: p[4], kg: num(p[5]), cm: num(p[6]), pas: num(p[7]), pad: num(p[8]), fc: num(p[9]), ts: num(p[10]) * 60000, enf: String(p[11] || ''), clinica: String(p[12] || ''), emp: String(p[13] || ''), tipo: String(p[14] || ''), obs: String(p[15] || '') };
+  } catch (e) { return null; }
+}
+function fichaTexto(r) {
+  const imc = calcIMC(r.kg, r.cm);
+  const l = [
+    semAcento(S.cfg.clinica).toUpperCase() + ' - TRIAGEM',
+    semAcento(r.n),
+    fData(r.ts) + ' ' + fHora(r.ts) + '  Cod. ' + cod(r),
+    'PA ' + r.pas + '/' + r.pad + ' mmHg',
+    'FC ' + r.fc + ' bpm',
+    'Peso ' + f1.format(r.kg) + ' kg  Altura ' + f2.format(r.cm / 100) + ' m',
+    'IMC ' + f1.format(imc) + ' kg/m2'
+  ];
+  if (r.obs) l.push('Obs: ' + semAcento(r.obs).slice(0, 120));
+  if (r.enf) l.push('Resp.: ' + semAcento(r.enf));
+  return l.join('\n');
+}
+const modoLink = () => S.cfg.modo === 'link' && /^https?:\/\/\S+$/i.test((S.cfg.url || '').trim());
+function qrConteudo(r) {
+  if (modoLink()) return S.cfg.url.trim().replace(/#.*$/, '') + '#' + fichaToken(r);
+  return fichaTexto(r);
+}
+function qrSVG(text) {
+  if (typeof qrcode !== 'function') return null;
+  for (const ecl of ['M', 'L']) {
+    try {
+      const q = qrcode(0, ecl); q.addData(text, 'Byte'); q.make();
+      const n = q.getModuleCount(), s = n + 8; let d = '';
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.isDark(y, x)) d += 'M' + (x + 4) + ' ' + (y + 4) + 'h1v1h-1z';
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '" shape-rendering="crispEdges" role="img" aria-label="QR Code da ficha de triagem"><rect width="' + s + '" height="' + s + '" fill="#ffffff"/><path d="' + d + '" fill="#000000"/></svg>';
+    } catch (e) { /* tenta o próximo nível de correção */ }
+  }
+  return null;
+}
+function abrirQR(r, novo) {
+  const svg = qrSVG(qrConteudo(r));
+  $('#dlg-qr').innerHTML = svg || '<p>Não foi possível desenhar o QR Code neste computador. A triagem está salva e aparece em “Atendimentos”.</p>';
+  $('#dlg-modo').textContent = modoLink() ? 'Peça ao paciente para apontar a câmera do celular. O código abre a ficha dele.' : 'Peça ao paciente para apontar a câmera do celular. O código mostra as medidas em texto.';
+  $('#dlg-eyebrow').textContent = (r.demo ? 'Exemplo, código ' : novo ? 'Triagem salva, código ' : 'Triagem, código ') + cod(r);
+  $('#dlg-nome').textContent = r.n;
+  $('#dlg-meta').textContent = linhaMeta(r) + '. ' + fData(r.ts) + ' às ' + fHora(r.ts);
+  $('#dlg-vit').innerHTML = medidasHTML(r);
+  $('#dlg-ficha').setAttribute('href', '#' + fichaToken(r));
+  const btnPres = $('#dlg-presenca');
+  if (btnPres) {
+    if (r.presenca_id) {
+      btnPres.textContent = '✓ Já na Lista de Presença';
+      btnPres.setAttribute('href', '/presenca/');
+    } else {
+      const qs = new URLSearchParams({ from_triagem: r.id || '', nome: r.n || '', empresa: r.emp || '', codigo: cod(r) });
+      btnPres.textContent = 'Enviar p/ Presença';
+      btnPres.setAttribute('href', '/presenca/?' + qs.toString());
+    }
+  }
+  const d = $('#dlg'); if (!d.open) d.showModal();
+  $('#dlg-nova').focus();
+}
+function linhaMeta(r) {
+  const a = idade(r.dn, r.ts), p = [];
+  if (a != null) p.push(a + ' anos');
+  if (r.sx) p.push(r.sx === 'M' ? 'masculino' : 'feminino');
+  if (r.emp) p.push(r.emp);
+  if (r.tipo) p.push(r.tipo);
+  return p.length ? p.join(', ') : 'Sem dados complementares';
+}
+function mostrarFicha(hash) {
+  const f = lerFicha(hash), el = $('#ficha');
+  $('#app').hidden = true; el.hidden = false;
+  const voltar = S.started ? '<a class="btn" href="#atendimentos">Voltar ao sistema</a>' : '';
+  if (!f) {
+    el.innerHTML = '<div class="fx-card"><h1>QR Code inválido</h1><p class="fx-meta">Não foi possível ler esta ficha. Peça à enfermagem para gerar o código novamente.</p></div>' + voltar;
+    return;
+  }
+  document.title = 'Ficha de triagem';
+  el.innerHTML =
+    '<div class="fx-top">' + MARCA + '<b>' + esc(f.clinica || 'EcoClinic') + '</b></div>' +
+    '<div class="fx-card">' +
+      '<div><p class="note">Ficha de triagem</p><h1>' + esc(f.n) + '</h1><p class="fx-meta">' + esc(linhaMeta(f)) + (f.dn ? ', nasc. ' + esc(fDn(f.dn)) : '') + '</p></div>' +
+      medidasHTML(f) +
+      (f.obs ? '<div><p class="note">Observações</p><p>' + esc(f.obs) + '</p></div>' : '') +
+      '<p class="fx-meta">Medidas feitas em <b>' + fData(f.ts) + ' às ' + fHora(f.ts) + '</b>' + (f.enf ? ' por ' + esc(f.enf) : '') + '. Código <b>' + esc(f.codigo) + '</b>.</p>' +
+    '</div>' +
+    '<p class="fx-foot">Mostre esta tela ao médico. As medidas são da triagem; a avaliação é feita na consulta.</p>' + voltar;
+}
+
+/* ================= formulário ================= */
+const F = { nome: $('#i-nome'), dn: $('#i-dn'), sx: $('#i-sx'), emp: $('#i-emp'), tipo: $('#i-tipo'), pas: $('#i-pas'), pad: $('#i-pad'), fc: $('#i-fc'), kg: $('#i-kg'), cm: $('#i-cm'), obs: $('#i-obs'), enf: $('#i-enf') };
+const CAMPOS = ['nome', 'dn', 'pas', 'pad', 'fc', 'kg', 'cm'];
+const pn = v => { const n = parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+function lerMedidas() {
+  let pas = pn(F.pas.value), pad = pn(F.pad.value), fc = pn(F.fc.value), kg = pn(F.kg.value), cm = pn(F.cm.value);
+  if (pas > 0 && pas < 31) pas *= 10;
+  if (pad > 0 && pad < 21) pad *= 10;
+  if (cm > 0 && cm <= 3) cm *= 100;
+  return { pas: Math.round(pas) || 0, pad: Math.round(pad) || 0, fc: Math.round(fc) || 0, kg: Math.round(kg * 10) / 10 || 0, cm: Math.round(cm * 10) / 10 || 0 };
+}
+function renderPrev() {
+  const m = lerMedidas();
+  $('#prev-vit').innerHTML = medidasHTML(m);
+  const al = $('#prev-alert');
+  if (m.pas > 0 && m.pad > 0 && (m.pas >= 180 || m.pad >= 110)) {
+    al.innerHTML = '<b>Pressão muito elevada.</b> Repita a medida após alguns minutos de repouso e avise o médico antes de o paciente seguir.';
+    al.hidden = false;
+  } else al.hidden = true;
+}
+function setErr(k, msg) { $('#e-' + k).textContent = msg || ''; F[k].setAttribute('aria-invalid', msg ? 'true' : 'false'); }
+function validar() {
+  const m = lerMedidas(), nome = F.nome.value.replace(/\s+/g, ' ').trim();
+  const er = {};
+  if (nome.length < 5 || nome.indexOf(' ') < 0) er.nome = 'Informe nome e sobrenome.';
+  if (F.dn.value && (F.dn.value > dayKey(Date.now()) || F.dn.value < '1900-01-01')) er.dn = 'Data de nascimento inválida.';
+  if (!(m.pas >= 60 && m.pas <= 300)) er.pas = 'Sistólica entre 60 e 300.';
+  if (!(m.pad >= 30 && m.pad <= 200)) er.pad = 'Diastólica entre 30 e 200.';
+  if (!er.pas && !er.pad && m.pad >= m.pas) er.pad = 'A diastólica deve ser menor que a sistólica.';
+  if (!(m.fc >= 30 && m.fc <= 250)) er.fc = 'Entre 30 e 250.';
+  if (!(m.kg >= 20 && m.kg <= 350)) er.kg = 'Entre 20 e 350.';
+  if (!(m.cm >= 100 && m.cm <= 250)) er.cm = 'Entre 100 e 250.';
+  CAMPOS.forEach(k => setErr(k, er[k]));
+  const first = CAMPOS.find(k => er[k]);
+  if (first) { F[first].focus(); return null; }
+  return Object.assign(m, { n: nome, dn: F.dn.value || '', sx: F.sx.value, emp: F.emp.value.replace(/\s+/g, ' ').trim(), tipo: F.tipo.value, obs: F.obs.value.trim(), enf: F.enf.value.replace(/\s+/g, ' ').trim() });
+}
+function limparForm() {
+  const enf = F.enf.value;
+  $('#form').reset();
+  F.enf.value = enf;
+  setChoice('i-sx', ''); setChoice('i-tipo', '');
+  CAMPOS.forEach(k => setErr(k, ''));
+  $('#e-form').textContent = '';
+  S.editing = null;
+  limparVinculoPresenca();
+  $('#tri-title').textContent = 'Nova triagem';
+  $('#b-salvar').textContent = 'Salvar e gerar QR Code';
+  $('#b-limpar').textContent = 'Limpar';
+  renderPrev();
+}
+function editar(r) {
+  S.editing = r.id;
+  F.nome.value = r.n; F.dn.value = r.dn; F.emp.value = r.emp;
+  setChoice('i-sx', r.sx); setChoice('i-tipo', TIPOS.includes(r.tipo) ? r.tipo : '');
+  F.pas.value = r.pas; F.pad.value = r.pad; F.fc.value = r.fc;
+  F.kg.value = String(r.kg).replace('.', ','); F.cm.value = String(r.cm).replace('.', ',');
+  F.obs.value = r.obs; if (r.enf) F.enf.value = r.enf;
+  $('#tri-title').textContent = 'Corrigir triagem de ' + r.n;
+  $('#b-salvar').textContent = 'Salvar correção';
+  $('#b-limpar').textContent = 'Cancelar correção';
+  renderPrev();
+  location.hash = '#triagem';
+  F.pas.focus();
+}
+$('#form').addEventListener('input', renderPrev);
+$('#b-limpar').addEventListener('click', () => { limparForm(); F.nome.focus(); });
+$('#b-desvincular-presenca').addEventListener('click', limparVinculoPresenca);
+$('#presenca-queue-chips').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-presenca-pick]');
+  if (!b) return;
+  const item = S.pendingPresencas.find(x => x.id === b.dataset.presencaPick);
+  if (item) selecionarDaPresenca(item);
+});
+$('#form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const v = validar(); if (!v) return;
+  const btn = $('#b-salvar'); btn.disabled = true; $('#e-form').textContent = '';
+  const base = S.editing ? S.real.find(r => r.id === S.editing) : null;
+  const rec = Object.assign(
+    { id: base ? base.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 7), ts: base ? base.ts : Date.now(), presenca_id: S.linkedPresencaId || (base && base.presenca_id) || null },
+    v,
+    { x: 0, ed: base ? Date.now() : 0 }
+  );
+  let salvo = rec;
+  try {
+    const ret = await persistir(rec);
+    if (ret) salvo = ret;
+  }
+  catch (e) { $('#e-form').textContent = msgErro(e); btn.disabled = false; return; }
+  btn.disabled = false;
+  if (rec.enf) LS.set(K_ENF, rec.enf);
+  limparForm();
+  carregarIntegracaoPresenca();
+  abrirQR(salvo, true);
+});
+$('#dlg-nova').addEventListener('click', () => { $('#dlg').close(); location.hash = '#triagem'; setTimeout(() => F.nome.focus(), 30); });
+$('#dlg-fechar').addEventListener('click', () => $('#dlg').close());
+$('#dlg-ficha').addEventListener('click', () => $('#dlg').close());
+
+/* ================= atendimentos ================= */
+function renderAtend() {
+  const q = norm($('#at-q').value), dia = $('#at-data').value || dayKey(Date.now());
+  let list = recs();
+  if (q) list = list.filter(r => norm(r.n).includes(q) || cod(r).toLowerCase() === q).slice(0, 100);
+  else list = list.filter(r => dayKey(r.ts) === dia);
+  $('#at-count').textContent = !S.loaded ? 'Carregando registros…' : q ? list.length + (list.length === 1 ? ' resultado' : ' resultados') + ' para a busca' : list.length + (list.length === 1 ? ' triagem em ' : ' triagens em ') + fDn(dia);
+  const ul = $('#at-list');
+  if (!list.length) {
+    ul.innerHTML = S.loaded ? '<li class="empty"><b>' + (q ? 'Nenhum paciente encontrado' : 'Nenhuma triagem nesta data') + '</b>' + (q ? 'Confira a grafia do nome ou busque pelo código da triagem.' : 'As triagens salvas em “Nova triagem” aparecem aqui na hora.') + '</li>' : '';
+    return;
+  }
+  ul.innerHTML = list.map(r => {
+    const imc = calcIMC(r.kg, r.cm), arm = S.delArmed === r.id, kp = classPA(r.pas, r.pad);
+    const presLink = new URLSearchParams({ from_triagem: r.id || '', nome: r.n || '', empresa: r.emp || '', codigo: cod(r) }).toString();
+    const presTag = r.presenca_id ? '<span class="tag" style="background:var(--accent-soft);color:var(--accent)">✓ presença</span>' : '';
+    const presBtn = (!r.demo && !r.presenca_id) ? '<a class="btn sm" href="/presenca/?' + presLink + '">+ Presença</a>' : '';
+    return '<li class="at">' +
+      '<span class="av" aria-hidden="true">' + esc(iniciais(r.n)) + '</span>' +
+      '<div class="at-p"><strong>' + esc(r.n) + (r.demo ? '<span class="tag">exemplo</span>' : '') + presTag + '</strong><span>' + (q ? fData(r.ts) + ' às ' : 'Às ') + fHora(r.ts) + '. ' + esc(linhaMeta(r)) + '. Cód. ' + esc(cod(r)) + '</span></div>' +
+      '<div class="at-m">' +
+        '<span class="pill" title="' + esc(PA[kp].l) + '"><i class="dot c-' + PA[kp].c + '"></i>PA <b>' + r.pas + '/' + r.pad + '</b></span>' +
+        '<span class="pill" title="' + esc(FC[classFC(r.fc)].l) + '"><i class="dot c-' + FC[classFC(r.fc)].c + '"></i>FC <b>' + r.fc + '</b></span>' +
+        '<span class="pill" title="' + esc(IMC[classIMC(imc)].l) + '"><i class="dot c-' + IMC[classIMC(imc)].c + '"></i>IMC <b>' + f1.format(imc) + '</b></span>' +
+        '<span>' + esc(PA[kp].l) + '</span>' +
+      '</div>' +
+      '<div class="at-a">' +
+        presBtn +
+        '<button class="btn sm" type="button" data-act="qr" data-id="' + esc(r.id) + '">QR Code</button>' +
+        (r.demo ? '' : '<button class="btn sm" type="button" data-act="edit" data-id="' + esc(r.id) + '">Corrigir</button>' +
+          '<button class="btn sm danger" type="button" data-act="del" data-id="' + esc(r.id) + '">' + (arm ? 'Confirmar exclusão' : 'Excluir') + '</button>') +
+      '</div></li>';
+  }).join('');
+}
+$('#at-data').addEventListener('change', renderAtend);
+$('#at-q').addEventListener('input', renderAtend);
+$('#at-list').addEventListener('click', async ev => {
+  const b = ev.target.closest('button[data-act]'); if (!b) return;
+  const r = recs().find(x => x.id === b.dataset.id); if (!r) return;
+  if (b.dataset.act === 'qr') abrirQR(r, false);
+  else if (b.dataset.act === 'edit') editar(r);
+  else if (b.dataset.act === 'del') {
+    if (S.delArmed !== r.id) { S.delArmed = r.id; renderAtend(); setTimeout(() => { if (S.delArmed === r.id) { S.delArmed = null; renderAtend(); } }, 5000); return; }
+    S.delArmed = null; b.disabled = true;
+    try { await persistir(Object.assign({}, r, { x: 1, ed: Date.now() })); toast('Triagem excluída.'); }
+    catch (e) { toast(msgErro(e)); renderAtend(); }
+  }
+});
+document.addEventListener('click', ev => {
+  if (ev.target.closest('[data-act="demo-off"]')) { S.showDemo = false; renderDados(); }
+});
+
+/* ================= painel ================= */
+function periodo() {
+  const p = $('#p-per').value, now = new Date();
+  const fim = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+  const ini = d => new Date(now.getFullYear(), now.getMonth(), now.getDate() - d).getTime();
+  if (p === 'tudo') return [0, fim];
+  if (p === 'ano') return [new Date(now.getFullYear(), 0, 1).getTime(), fim];
+  if (p === 'custom') {
+    const de = $('#p-de').value, ate = $('#p-ate').value;
+    return [de ? new Date(de + 'T00:00:00').getTime() : 0, ate ? new Date(ate + 'T23:59:59.999').getTime() : fim];
+  }
+  return [ini(Number(p) - 1), fim];
+}
+function porPessoa(list) {
+  const m = new Map();
+  for (const r of list) { const k = norm(r.n) + '|' + r.dn; const o = m.get(k); if (!o || r.ts > o.ts) m.set(k, r); }
+  return Array.from(m.values());
+}
+function resumo(list) {
+  const o = { n: list.length, pa: {}, imc: {}, fc: {}, sPas: 0, sPad: 0, sFc: 0, sImc: 0, sKg: 0, sCm: 0 };
+  for (const r of list) {
+    const i = calcIMC(r.kg, r.cm), a = classPA(r.pas, r.pad), b = classIMC(i), c = classFC(r.fc);
+    o.pa[a] = (o.pa[a] || 0) + 1; o.imc[b] = (o.imc[b] || 0) + 1; o.fc[c] = (o.fc[c] || 0) + 1;
+    o.sPas += r.pas; o.sPad += r.pad; o.sFc += r.fc; o.sImc += i; o.sKg += r.kg; o.sCm += r.cm;
+  }
+  const g = (x, ks) => ks.reduce((s, k) => s + (x[k] || 0), 0);
+  o.hip = g(o.pa, ['e1', 'e2', 'e3']); o.pre = o.pa.pre || 0;
+  o.acima = g(o.imc, ['sobre', 'ob1', 'ob2', 'ob3']); o.obes = g(o.imc, ['ob1', 'ob2', 'ob3']);
+  o.fcFora = g(o.fc, ['baixa', 'alta']);
+  return o;
+}
+const pc = (a, b) => b ? Math.round(a / b * 100) : 0;
+function distHTML(titulo, sub, meta, cont, total) {
+  const ks = Object.keys(meta);
+  return '<div class="dist"><div><h3>' + titulo + '</h3><p class="note">' + sub + '</p></div>' +
+    '<div class="stack100">' + ks.filter(k => cont[k] > 0).map(k => '<i class="c-' + meta[k].c + '" style="flex:' + cont[k] + ' 1 0" data-tip="' + esc(meta[k].l + '\n' + f0.format(cont[k]) + (cont[k] === 1 ? ' pessoa' : ' pessoas') + ' (' + pc(cont[k], total) + '%)') + '"></i>').join('') + '</div>' +
+    '<div class="drows">' + ks.map(k => {
+      const n = cont[k] || 0, m = meta[k];
+      return '<div class="drow"><i class="dot c-' + m.c + '"></i><span class="dl">' + esc(m.l) + '<small>' + esc(m.f) + '</small></span>' +
+        '<span class="dn">' + f0.format(n) + '</span><span class="dp">' + pc(n, total) + '%</span></div>';
+    }).join('') + '</div></div>';
+}
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function serieMensal(list, de, ate) {
+  if (!list.length) return [];
+  const t0 = Math.max(de, list.reduce((m, r) => Math.min(m, r.ts), Infinity));
+  const a = new Date(t0), b = new Date(ate), out = [];
+  let y = a.getFullYear(), m = a.getMonth();
+  while ((y < b.getFullYear() || (y === b.getFullYear() && m <= b.getMonth())) && out.length < 36) {
+    out.push({ k: y + '-' + p2(m + 1), l: MESES[m] + '/' + String(y).slice(2), n: 0, hip: 0, acima: 0 });
+    if (++m > 11) { m = 0; y++; }
+  }
+  const ix = new Map(out.map((o, i) => [o.k, i]));
+  for (const r of list) {
+    const i = ix.get(dayKey(r.ts).slice(0, 7)); if (i == null) continue;
+    const o = out[i]; o.n++;
+    if (r.pas >= 140 || r.pad >= 90) o.hip++;
+    if (calcIMC(r.kg, r.cm) >= 25) o.acima++;
+  }
+  return out.slice(-24);
+}
+function niceMax(v) { if (v <= 5) return 5; const p = Math.pow(10, Math.floor(Math.log10(v))); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
+function chartBarras(el, serie) {
+  const W = Math.max(280, el.clientWidth || 600), H = 220, L = 34, R = 8, T = 12, B = 26;
+  const max = niceMax(Math.max.apply(null, serie.map(s => s.n))), band = (W - L - R) / serie.length, bw = Math.min(34, Math.max(4, band * 0.64));
+  const y = v => T + (H - T - B) * (1 - v / max), passo = Math.ceil(serie.length / Math.max(2, Math.floor((W - L - R) / 52)));
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Triagens por mês">';
+  [0, .5, 1].forEach(f => { const yy = y(max * f); s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + f0.format(max * f) + '</text>'; });
+  serie.forEach((d, i) => {
+    const cx = L + band * (i + .5), h = Math.max(d.n ? 2 : 0, y(0) - y(d.n)), x = cx - bw / 2, yy = y(0) - h, rr = Math.min(6, bw / 2, h);
+    if (h > 0) s += '<path d="M' + x + ' ' + y(0) + 'V' + (yy + rr) + 'q0 -' + rr + ' ' + rr + ' -' + rr + 'h' + (bw - 2 * rr) + 'q' + rr + ' 0 ' + rr + ' ' + rr + 'V' + y(0) + 'z" fill="var(--accent)"/>';
+    if (i % passo === 0) s += '<text x="' + cx + '" y="' + (H - 8) + '" text-anchor="middle">' + d.l + '</text>';
+    s += '<rect x="' + (L + band * i) + '" y="' + T + '" width="' + band + '" height="' + (H - T - B) + '" fill="transparent" data-tip="' + esc(d.l + '\n' + f0.format(d.n) + (d.n === 1 ? ' triagem' : ' triagens')) + '"/>';
+  });
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--muted)" stroke-width="1"/></svg>';
+  el.innerHTML = s;
+}
+function chartLinhas(el, serie) {
+  const W = Math.max(280, el.clientWidth || 600), H = 220, L = 38, R = 44, T = 14, B = 26;
+  const pts = serie.map(d => d.n >= 5 ? { a: d.hip / d.n * 100, b: d.acima / d.n * 100 } : null);
+  const vals = pts.filter(Boolean), max = Math.min(100, Math.max(20, Math.ceil(Math.max.apply(null, vals.map(p => Math.max(p.a, p.b)).concat([0])) / 20) * 20));
+  const band = (W - L - R) / serie.length, x = i => L + band * (i + .5), y = v => T + (H - T - B) * (1 - v / max);
+  const passo = Math.ceil(serie.length / Math.max(2, Math.floor((W - L - R) / 52)));
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Percentual de pessoas com pressão igual ou acima de 140/90 e com IMC igual ou acima de 25, por mês">';
+  [0, .5, 1].forEach(f => { const yy = y(max * f); s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--line)" stroke-width="1"/><text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + f0.format(max * f) + '%</text>'; });
+  const linha = (key, cor) => {
+    let d = '', pen = false, last = null;
+    pts.forEach((p, i) => { if (!p) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p[key]).toFixed(1); pen = true; last = i; });
+    let o = '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach((p, i) => { if (p && (vals.length <= 14 || i === last)) o += '<circle cx="' + x(i) + '" cy="' + y(p[key]) + '" r="' + (i === last ? 5 : 3.2) + '" fill="' + cor + '" stroke="var(--sheet)" stroke-width="2"/>'; });
+    return { o, last };
+  };
+  const A = linha('a', 'var(--s1)'), Bl = linha('b', 'var(--s2)');
+  s += Bl.o + A.o;
+  if (A.last != null) {
+    let ya = y(pts[A.last].a) + 4, yb = y(pts[Bl.last].b) + 4;
+    if (A.last === Bl.last && Math.abs(ya - yb) < 14) { const mid = (ya + yb) / 2, up = ya <= yb; ya = mid + (up ? -7 : 7); yb = mid + (up ? 7 : -7); }
+    s += '<text class="val" x="' + (x(A.last) + 10) + '" y="' + ya + '">' + Math.round(pts[A.last].a) + '%</text>';
+    s += '<text class="val" x="' + (x(Bl.last) + 10) + '" y="' + yb + '">' + Math.round(pts[Bl.last].b) + '%</text>';
+  }
+  serie.forEach((d, i) => {
+    if (i % passo === 0) s += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + d.l + '</text>';
+    const tip = d.l + '\n' + (pts[i] ? 'PA ≥ 140/90: ' + Math.round(pts[i].a) + '%\nIMC ≥ 25: ' + Math.round(pts[i].b) + '%\n' + f0.format(d.n) + ' triagens' : f0.format(d.n) + ' triagens (menos de 5: percentual não calculado)');
+    s += '<rect x="' + (L + band * i) + '" y="' + T + '" width="' + band + '" height="' + (H - T - B) + '" fill="transparent" data-tip="' + esc(tip) + '"/>';
+  });
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--muted)" stroke-width="1"/></svg>';
+  el.innerHTML = s;
+}
+const FAIXAS = [[0, 29, 'Até 29 anos'], [30, 39, '30 a 39 anos'], [40, 49, '40 a 49 anos'], [50, 59, '50 a 59 anos'], [60, 200, '60 anos ou mais']];
+function grupoDe(r, dim) {
+  if (dim === 'emp') return r.emp || 'Não informada';
+  if (dim === 'sx') return r.sx === 'M' ? 'Masculino' : r.sx === 'F' ? 'Feminino' : 'Não informado';
+  if (dim === 'tipo') return r.tipo || 'Não informado';
+  const a = idade(r.dn, r.ts); if (a == null) return 'Idade não informada';
+  return (FAIXAS.find(f => a >= f[0] && a <= f[1]) || FAIXAS[4])[2];
+}
+function recorteHTML(pessoas, dim) {
+  const m = new Map();
+  for (const r of pessoas) { const k = grupoDe(r, dim); (m.get(k) || m.set(k, []).get(k)).push(r); }
+  let rows = Array.from(m.entries()).map(([k, l]) => ({ k, s: resumo(l) }));
+  if (dim === 'idade') rows.sort((a, b) => FAIXAS.findIndex(f => f[2] === a.k) - FAIXAS.findIndex(f => f[2] === b.k) || (a.k > b.k ? 1 : -1));
+  else rows.sort((a, b) => b.s.n - a.s.n);
+  rows = rows.slice(0, 20);
+  return '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Grupo</th><th>Pessoas</th><th>PA ≥ 140/90</th><th>Pré-hipertensão</th><th>IMC ≥ 25</th><th>IMC ≥ 30</th><th>FC média</th></tr></thead><tbody>' +
+    rows.map(({ k, s }) => '<tr><td>' + esc(k) + '</td><td>' + f0.format(s.n) + '</td>' + (s.n < 5
+      ? '<td class="sup" colspan="5">Menos de 5 pessoas: indicadores ocultos</td>'
+      : '<td>' + pc(s.hip, s.n) + '%</td><td>' + pc(s.pre, s.n) + '%</td><td>' + pc(s.acima, s.n) + '%</td><td>' + pc(s.obes, s.n) + '%</td><td>' + Math.round(s.sFc / s.n) + ' bpm</td>') + '</tr>').join('') +
+    '</tbody></table></div>';
+}
+let painelSerie = [], recDim = 'emp';
+function renderPainel() {
+  const body = $('#p-body');
+  if (!S.loaded) { body.innerHTML = '<div class="empty">Carregando registros…</div>'; return; }
+  const [de, ate] = periodo(), emp = $('#p-emp').value, sx = $('#p-sx').value, tipo = $('#p-tipo').value;
+  const list = recs().filter(r => r.ts >= de && r.ts <= ate && (!emp || r.emp === emp) && (!sx || r.sx === sx) && (!tipo || r.tipo === tipo));
+  if (!list.length) {
+    body.innerHTML = '<div class="empty"><b>Nenhuma triagem neste recorte</b>Amplie o período ou remova filtros. Os indicadores aparecem assim que houver triagens salvas.</div>';
+    return;
+  }
+  const pessoas = porPessoa(list), s = resumo(pessoas), n = s.n;
+  const dIni = de || list[list.length - 1].ts, txtPer = fData(dIni) + ' a ' + fData(Math.min(ate, Date.now()));
+  painelSerie = serieMensal(list, de, ate);
+  const destaque =
+    (n < 30 ? 'Atenção: amostra pequena (menos de 30 pessoas). Aguarde mais registros antes de divulgar.\n\n' : '') +
+    'Entre ' + txtPer + ', a ' + S.cfg.clinica + ' avaliou ' + f0.format(n) + (n === 1 ? ' pessoa' : ' pessoas') + ' na triagem de saúde ocupacional.\n' +
+    pc(s.hip, n) + '% apresentaram pressão arterial igual ou superior a 140/90 mmHg na medida de triagem e outros ' + pc(s.pre, n) + '% estavam na faixa de pré-hipertensão (120–139/80–89 mmHg).\n' +
+    pc(s.acima, n) + '% estavam acima do peso (IMC igual ou superior a 25 kg/m²), sendo ' + pc(s.obes, n) + '% com obesidade (IMC igual ou superior a 30 kg/m²).\n' +
+    'A frequência cardíaca média foi de ' + Math.round(s.sFc / n) + ' bpm, e ' + pc(s.fcFora, n) + '% ficaram fora da faixa de 60 a 100 bpm.\n\n' +
+    'Nota: medida única de triagem, que não equivale a diagnóstico. Pressão classificada pela Diretriz Brasileira de Hipertensão Arterial 2025; IMC pela classificação da OMS para adultos.';
+  body.innerHTML =
+    '<div class="stats">' +
+      '<div class="stat"><span>Pessoas avaliadas</span><b>' + f0.format(n) + '</b><p>' + f0.format(list.length) + (list.length === 1 ? ' triagem' : ' triagens') + ', de ' + txtPer + '</p></div>' +
+      '<div class="stat"><span>Pressão arterial média</span><b>' + Math.round(s.sPas / n) + '/' + Math.round(s.sPad / n) + '<small>mmHg</small></b><p>' + pc(s.hip, n) + '% com 140/90 ou mais</p></div>' +
+      '<div class="stat"><span>Frequência cardíaca média</span><b>' + Math.round(s.sFc / n) + '<small>bpm</small></b><p>' + pc(s.fcFora, n) + '% fora de 60 a 100 bpm</p></div>' +
+      '<div class="stat"><span>IMC médio</span><b>' + f1.format(s.sImc / n) + '<small>kg/m²</small></b><p>Peso médio ' + f1.format(s.sKg / n) + ' kg, altura média ' + f2.format(s.sCm / n / 100) + ' m</p></div>' +
+    '</div>' +
+    '<section class="blk"><h2>Distribuição por faixa</h2><div class="g3">' +
+      distHTML('Pressão arterial', 'Faixas em mmHg, DBHA 2025', PA, s.pa, n) +
+      distHTML('Índice de massa corporal', 'Faixas em kg/m², OMS para adultos', IMC, s.imc, n) +
+      distHTML('Frequência cardíaca', 'Faixas em bpm, em repouso', FC, s.fc, n) +
+    '</div><p class="note">Cada pessoa conta uma vez: quando houve mais de uma triagem no período, vale a medida mais recente.</p></section>' +
+    '<div class="g2c">' +
+      '<section class="blk"><div><h2>Triagens por mês</h2><p class="note">Volume de atendimentos registrados</p></div><div class="chart" id="ch-vol"></div></section>' +
+      '<section class="blk"><div class="ch-head"><div><h2>Indicadores por mês</h2><p class="note">Percentual das triagens de cada mês</p></div>' +
+        '<div class="legend"><span><i class="dot c-s1"></i>PA ≥ 140/90</span><span><i class="dot c-s2"></i>IMC ≥ 25</span></div></div>' +
+        (painelSerie.filter(m => m.n >= 5).length >= 2 ? '<div class="chart" id="ch-ind"></div>' : '<p class="empty">A evolução aparece quando houver pelo menos dois meses com 5 ou mais triagens.</p>') + '</section>' +
+    '</div>' +
+    '<section class="blk"><div class="ch-head"><div><h2>Recortes</h2><p class="note">Onde estão as maiores oportunidades de ação em saúde</p></div>' +
+      '<label class="f" style="flex:0 1 220px"><span>Agrupar por</span><select class="in" id="p-dim"><option value="emp">Empresa</option><option value="idade">Faixa etária</option><option value="sx">Sexo</option><option value="tipo">Tipo de exame</option></select></label></div>' +
+      '<div id="p-rec"></div></section>' +
+    '<section class="blk"><div class="ch-head"><div><h2>Texto para divulgação</h2><p class="note">Resumo dos indicadores do recorte acima, pronto para revisar e publicar</p></div>' +
+      '<button class="btn sm" type="button" id="b-copiar">Copiar texto</button></div>' +
+      '<div class="destq-text" id="p-dest"></div></section>';
+  $('#p-dest').textContent = destaque;
+  $('#p-dim').value = recDim;
+  $('#p-rec').innerHTML = recorteHTML(pessoas, recDim);
+  $('#p-dim').addEventListener('change', e => { recDim = e.target.value; $('#p-rec').innerHTML = recorteHTML(pessoas, recDim); });
+  $('#b-copiar').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(destaque); toast('Texto copiado.'); }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($('#p-dest')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Texto selecionado. Use Ctrl+C para copiar.'); }
+  });
+  desenharGraficos();
+}
+function desenharGraficos() {
+  const a = $('#ch-vol'), b = $('#ch-ind');
+  if (a && painelSerie.length) chartBarras(a, painelSerie);
+  if (b && painelSerie.length) chartLinhas(b, painelSerie);
+}
+['p-per', 'p-de', 'p-ate', 'p-emp', 'p-sx', 'p-tipo'].forEach(id => $('#' + id).addEventListener('change', () => {
+  const c = $('#p-per').value === 'custom'; $('#p-de-w').hidden = !c; $('#p-ate-w').hidden = !c;
+  renderPainel();
+}));
+let rsT = 0;
+window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (S.view === 'painel') desenharGraficos(); }, 150); });
+const tip = $('#tip');
+function moverTip(ev) {
+  const t = ev.target.closest && ev.target.closest('[data-tip]');
+  if (!t) { tip.hidden = true; return; }
+  tip.textContent = t.getAttribute('data-tip'); tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, ev.clientX + 14)) + 'px';
+  tip.style.top = Math.max(8, ev.clientY - h - 12) + 'px';
+}
+document.addEventListener('pointermove', moverTip);
+document.addEventListener('pointerdown', moverTip);
+document.addEventListener('scroll', () => { tip.hidden = true; }, true);
+
+/* ================= configurações e exportação ================= */
+function preencherCfg() {
+  const ativo = document.activeElement;
+  [['c-clinica', 'clinica'], ['c-unidade', 'unidade'], ['c-url', 'url'], ['c-modo', 'modo']].forEach(([id, k]) => { const el = $('#' + id); if (el !== ativo) el.value = S.cfg[k]; });
+}
+function renderMarca() {
+  $('#brand-name').textContent = S.cfg.clinica.replace(/\s+medicina do trabalho$/i, '') || 'EcoClinic';
+  $('#brand-sub').textContent = S.cfg.unidade ? 'Triagem, ' + S.cfg.unidade : 'Triagem de enfermagem';
+}
+$('#cfg-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const c = { clinica: $('#c-clinica').value.trim() || 'EcoClinic Medicina do Trabalho', unidade: $('#c-unidade').value.trim(), url: $('#c-url').value.trim(), modo: $('#c-modo').value };
+  if (c.modo === 'link' && !/^https?:\/\/\S+$/i.test(c.url)) { toast('Informe o endereço público (começando com http:// ou https://) para usar a ficha visual.'); $('#c-url').focus(); return; }
+  await ensureStore();
+  try {
+    if (S.store === 'db') {
+      const res = await apiFetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(c)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Falha ao gravar no servidor');
+      }
+    } else {
+      if (!LS.set(K_CFG, c)) throw { code: 'local' };
+    }
+    aplicarCfg(c); toast('Configurações salvas no servidor.');
+  } catch (e) { toast(e.message || 'Não foi possível salvar as configurações.'); }
+});
+function csv(anon) {
+  const q = v => { v = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const cab = anon ? ['codigo', 'data', 'hora', 'idade', 'sexo', 'empresa', 'tipo_exame', 'peso_kg', 'altura_cm', 'imc', 'pa_sistolica', 'pa_diastolica', 'classificacao_pa', 'freq_cardiaca']
+    : ['codigo', 'data', 'hora', 'nome', 'nascimento', 'idade', 'sexo', 'empresa', 'tipo_exame', 'peso_kg', 'altura_cm', 'imc', 'pa_sistolica', 'pa_diastolica', 'classificacao_pa', 'freq_cardiaca', 'observacoes', 'profissional'];
+  const linhas = S.real.slice().sort((a, b) => a.ts - b.ts).map(r => {
+    const a = idade(r.dn, r.ts), i = calcIMC(r.kg, r.cm), n = v => String(v).replace('.', ',');
+    const base = [cod(r), fData(r.ts), fHora(r.ts)], fim = [a == null ? '' : a, r.sx, r.emp, r.tipo, n(r.kg), n(r.cm), n(i.toFixed(1)), r.pas, r.pad, PA[classPA(r.pas, r.pad)].l, r.fc];
+    return (anon ? base.concat(fim) : base.concat([r.n, fDn(r.dn)], fim, [r.obs, r.enf])).map(q).join(';');
+  });
+  return '﻿' + cab.join(';') + '\r\n' + linhas.join('\r\n') + '\r\n';
+}
+async function exportar(anon) {
+  if (S.store === 'db') {
+    toast('Gerando planilha CSV do banco de dados...');
+    try {
+      const res = await apiFetch('/api/exportar/csv?anon=' + (anon ? 'true' : 'false'));
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const nome = 'triagens-ecoclinic-' + (anon ? 'sem-identificacao-' : '') + dayKey(Date.now()) + '.csv';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast('Planilha exportada com sucesso.');
+    } catch (e) {
+      toast('Falha ao exportar planilha.');
+    }
+    return;
+  }
+  if (!S.real.length) { toast('Ainda não há triagens salvas para exportar.'); return; }
+  const nome = 'triagens-ecoclinic-' + (anon ? 'sem-identificacao-' : '') + dayKey(Date.now()) + '.csv', dados = csv(anon);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([dados], { type: 'text/csv;charset=utf-8' })); a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('#b-csv').addEventListener('click', () => exportar(false));
+$('#b-csv-anon').addEventListener('click', () => exportar(true));
+
+/* ================= renderização geral ================= */
+function renderStatus() {
+  const el = $('#status'), t = $('#status-t');
+  el.className = 'status' + (S.store === 'db' ? ' ok' : S.store === 'local' ? ' local' : S.store === 'erro' ? ' erro' : '');
+  t.textContent = S.store === 'db' ? 'Banco de Dados Conectado' : S.store === 'local' ? 'Salvo neste navegador' : S.store === 'erro' ? 'Sem acesso ao banco' : 'Conectando…';
+  $('#bn-local').hidden = S.store === 'db';
+  $('#c-store').textContent = S.store === 'db' ? 'Banco de dados ativo e compartilhado: todos os computadores e consultórios com acesso enxergam as mesmas triagens em tempo real.'
+    : S.store === 'local' ? 'Os registros ficam somente neste navegador. Exporte cópias com frequência.'
+    : S.store === 'erro' ? 'Não foi possível ler o banco de dados com o seu acesso.' : 'Verificando onde os registros são guardados…';
+}
+function opcoes(sel, vals, rot) {
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">' + rot + '</option>' + vals.map(v => '<option value="' + esc(v) + '">' + esc(v) + '</option>').join('');
+  sel.value = vals.includes(cur) ? cur : '';
+}
+function renderDados() {
+  const emps = Array.from(new Set(recs().map(r => r.emp).concat(S.sharedEmpresas || []).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  opcoes($('#p-emp'), emps, 'Todas');
+  $('#dl-emp').innerHTML = Array.from(new Set(S.real.map(r => r.emp).concat(S.sharedEmpresas || []).filter(Boolean))).slice(0, 200).map(v => '<option value="' + esc(v) + '"></option>').join('');
+  $$('[data-demo]').forEach(b => { b.hidden = !usandoDemo(); });
+  $('#c-total').textContent = S.loaded ? f0.format(S.real.length) + (S.real.length === 1 ? ' triagem registrada.' : ' triagens registradas.') : '';
+  renderStatus();
+  if (S.view === 'atendimentos') renderAtend();
+  if (S.view === 'painel') renderPainel();
+}
+function mostrarView(v) {
+  if (!verificarAcesso()) return;
+  S.view = v;
+  $('#ficha').hidden = true; $('#app').hidden = false;
+  document.title = 'Triagem EcoClinic';
+  ['triagem', 'atendimentos', 'painel', 'config'].forEach(k => { $('#v-' + k).hidden = k !== v; });
+  $$('.nav a').forEach(a => { if (a.dataset.tab === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (v === 'atendimentos') renderAtend();
+  if (v === 'painel') renderPainel();
+  if (v === 'config') preencherCfg();
+}
+function rota() {
+  const h = location.hash.slice(1);
+  if (h.slice(0, 2) === 'f.') { if ($('#dlg').open) $('#dlg').close(); mostrarFicha(h); window.scrollTo(0, 0); return; }
+  if (!verificarAcesso()) return;
+  mostrarView(['triagem', 'atendimentos', 'painel', 'config'].includes(h) ? h : 'triagem');
+  ensureStore();
+}
+
+/* ================= eventos de login e logout ================= */
+$('#form-login').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const email = $('#l-email').value.trim();
+  const senha = $('#l-senha').value;
+  const erroEl = $('#l-erro');
+  const btn = $('#b-login');
+
+  if (!email || !senha) {
+    erroEl.textContent = 'Informe e-mail e senha.';
+    return;
+  }
+
+  btn.disabled = true;
+  erroEl.textContent = '';
+
+  try {
+    const res = await fetch(API_BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Falha na autenticação.');
+    }
+
+    setAuth(data.token, data.user);
+    toast('Bem-vindo(a), ' + data.user.nome + '!');
+    $('#l-senha').value = '';
+    erroEl.textContent = '';
+    btn.disabled = false;
+
+    // Inicializa o sistema após o login
+    rota();
+    await ensureStore();
+    await verificarParametroFromPresenca();
+  } catch (err) {
+    // Se o backend não responder e for uma das contas conhecidas, permite acesso local de contingência
+    const offlineUsers = {
+      'enfermeiro@ecoclinic.com.br': { id: 'u2', nome: 'Enf. Maria Eduarda Silveira', cargo: 'enfermeiro', email: 'enfermeiro@ecoclinic.com.br' },
+      'medico@ecoclinic.com.br': { id: 'u3', nome: 'Dr. Roberto Albuquerque', cargo: 'medico_trabalho', email: 'medico@ecoclinic.com.br' },
+      'admin@ecoclinic.com.br': { id: 'u1', nome: 'Dra. Patrícia Mendes', cargo: 'administrador', email: 'admin@ecoclinic.com.br' }
+    };
+    const offUser = offlineUsers[email.toLowerCase()];
+    if (offUser && (!err.message || err.message.includes('fetch') || err.message.includes('Failed'))) {
+      setAuth('offline-token', offUser);
+      toast('Modo local (sem servidor). Bem-vindo(a), ' + offUser.nome + '!');
+      $('#l-senha').value = '';
+      erroEl.textContent = '';
+      btn.disabled = false;
+      rota();
+      ensureStore();
+      return;
+    }
+
+    erroEl.textContent = err.message || 'Erro ao realizar login.';
+    btn.disabled = false;
+  }
+});
+
+// Acesso rápido de demonstração (preenche e envia o formulário)
+document.addEventListener('click', ev => {
+  const btn = ev.target.closest('[data-demo-user]');
+  if (!btn) return;
+  const tipo = btn.dataset.demoUser;
+  if (tipo === 'enf') {
+    $('#l-email').value = 'enfermeiro@ecoclinic.com.br';
+    $('#l-senha').value = 'enf123';
+  } else if (tipo === 'med') {
+    $('#l-email').value = 'medico@ecoclinic.com.br';
+    $('#l-senha').value = 'medico123';
+  } else if (tipo === 'adm') {
+    $('#l-email').value = 'admin@ecoclinic.com.br';
+    $('#l-senha').value = 'admin123';
+  }
+  $('#form-login').dispatchEvent(new Event('submit', { cancelable: true }));
+});
+
+// Botão de Logout
+$('#b-logout').addEventListener('click', () => {
+  setAuth(null, null);
+  toast('Sessão encerrada.');
+  location.hash = '#triagem';
+  verificarAcesso();
+});
+
+/* ================= início ================= */
+const initQs = new URLSearchParams(location.search);
+if (initQs.get('from_presenca')) {
+  sessionStorage.setItem('ecoclinic.from_presenca', initQs.get('from_presenca'));
+  history.replaceState({}, document.title, location.pathname + location.hash);
+}
+$('[data-choice="i-tipo"]').innerHTML = TIPOS.map(t => '<button type="button" data-v="' + esc(t) + '">' + esc(t) + '</button>').join('');
+['i-sx', 'i-tipo', 'p-per', 'p-sx'].forEach(id => setChoice(id, $('#' + id).value));
+opcoes($('#p-tipo'), TIPOS, 'Todos');
+$('#at-data').value = dayKey(Date.now());
+$('#i-dn').max = dayKey(Date.now());
+renderMarca(); preencherCfg(); renderPrev(); renderStatus();
+window.addEventListener('hashchange', rota);
+rota();
+})();
+</script>
+
+</body>
+</html>

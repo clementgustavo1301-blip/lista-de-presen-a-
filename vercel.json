@@ -1,10 +1,17 @@
 {
   "version": 2,
-  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/api/state",
-      "destination": "/api/state.js"
+      "source": "/api/(.*)",
+      "destination": "/api?__pathname=/api/$1"
+    },
+    {
+      "source": "/presenca",
+      "destination": "/presenca/index.html"
+    },
+    {
+      "source": "/triagem",
+      "destination": "/triagem/index.html"
     }
   ]
 }

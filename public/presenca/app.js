@@ -1,6 +1,6 @@
 /**
  * Controle de Presença & Massoterapia — EcoSafety
- * Sincroniza no localStorage + Servidor Local (/api/state)
+ * Integrado ao Banco Unificado (/api/presencas) + Módulo de Triagem Clínica (/triagem/)
  */
 
 const STORAGE_KEYS = {
@@ -16,6 +16,7 @@ const DEFAULT_SERVICES = [
   'Liberação Miofascial',
   'Auriculoterapia',
   'Alongamento / Relaxamento',
+  'Triagem de Enfermagem',
 ];
 
 const DEFAULT_SERVICE_SET = new Set(DEFAULT_SERVICES);
@@ -32,10 +33,20 @@ const storageCache = new Map();
 const dateTimeCache = new Map();
 const escapeHtmlCache = new Map();
 
-const scheduleIdleWork =
-  typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function'
-    ? (cb) => window.requestIdleCallback(cb, { timeout: 1500 })
-    : (cb) => setTimeout(cb, 1);
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+}
 
 function toSortedArray(arr, compareFn) {
   if (typeof Array.prototype.toSorted === 'function') {
@@ -46,11 +57,12 @@ function toSortedArray(arr, compareFn) {
 
 let didInit = false;
 let searchRafId = null;
-let idleSaveHandle = null;
+let serverOnline = false;
 
 let state = {
   eventTitle: 'Lista de Presença — Massoterapia',
   services: [...DEFAULT_SERVICES],
+  sharedCompanies: [],
   records: [],
   recordById: new Map(),
   selectedFormServices: new Set(),
@@ -61,6 +73,7 @@ let state = {
 
 const el = {
   eventTitle: document.getElementById('eventTitle'),
+  storageDot: document.getElementById('storageDot'),
   storageStatusText: document.getElementById('storageStatusText'),
   liveDatePill: document.getElementById('liveDatePill'),
 
@@ -68,11 +81,12 @@ const el = {
   statServicesTotal: document.getElementById('statServicesTotal'),
   statAvgPerPerson: document.getElementById('statAvgPerPerson'),
   statCompanies: document.getElementById('statCompanies'),
+  statTriagensLinked: document.getElementById('statTriagensLinked'),
   serviceCounters: document.getElementById('serviceCounters'),
 
   mobileStatParticipants: document.getElementById('mobileStatParticipants'),
   mobileStatServices: document.getElementById('mobileStatServices'),
-  mobileStatCompanies: document.getElementById('mobileStatCompanies'),
+  mobileStatTriagens: document.getElementById('mobileStatTriagens'),
   navListBadge: document.getElementById('navListBadge'),
   navTabFormLabel: document.getElementById('navTabFormLabel'),
 
@@ -81,11 +95,17 @@ const el = {
   viewSummary: document.getElementById('viewSummary'),
   navTabs: document.querySelectorAll('.nav-tab'),
 
+  triageImportBanner: document.getElementById('triageImportBanner'),
+  triageImportTitle: document.getElementById('triageImportTitle'),
+  triageImportDesc: document.getElementById('triageImportDesc'),
+  btnClearTriageImport: document.getElementById('btnClearTriageImport'),
+
   form: document.getElementById('attendanceForm'),
   formHeading: document.getElementById('formHeading'),
   formSubtitle: document.getElementById('formSubtitle'),
   editModeBadge: document.getElementById('editModeBadge'),
   recordId: document.getElementById('recordId'),
+  linkedTriagemId: document.getElementById('linkedTriagemId'),
   inputName: document.getElementById('inputName'),
   inputPhone: document.getElementById('inputPhone'),
   inputCompany: document.getElementById('inputCompany'),
@@ -137,6 +157,16 @@ const el = {
   toastContainer: document.getElementById('toastContainer'),
 };
 
+function setStatusBadge(online, text) {
+  serverOnline = online;
+  if (el.storageDot) {
+    el.storageDot.style.background = online ? '#10b981' : '#f59e0b';
+  }
+  if (el.storageStatusText) {
+    el.storageStatusText.textContent = text || (online ? 'Banco Conectado' : 'Salvo Local');
+  }
+}
+
 function getCachedStorage(key) {
   if (!storageCache.has(key)) {
     try {
@@ -165,6 +195,10 @@ function minimizeRecord(rec) {
     company: String(rec.company || '').trim(),
     services: Array.isArray(rec.services) ? rec.services : [],
     notes: rec.notes ? String(rec.notes).trim() : '',
+    triagemId: rec.triagemId || null,
+    codigoTriagem: rec.codigoTriagem || null,
+    triagemRealizada: Boolean(rec.triagemRealizada || rec.triagemId),
+    statusFluxo: rec.statusFluxo || 'registrado',
     createdAt: rec.createdAt || new Date().toISOString(),
     ...(rec.updatedAt ? { updatedAt: rec.updatedAt } : {}),
   };
@@ -200,8 +234,50 @@ async function init() {
   updateLiveDatePill();
   loadStateFromLocalStorage();
   bindEvents();
+  checkIncomingTriageParams();
   renderAll();
   await syncFromServerIfAvailable();
+
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && !state.editingId) {
+      syncFromServerIfAvailable();
+    }
+  }, 10000);
+}
+
+function checkIncomingTriageParams() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const triagemId = params.get('from_triagem');
+    const nome = params.get('nome');
+    const empresa = params.get('empresa');
+    const codigo = params.get('codigo');
+
+    if (nome || triagemId) {
+      if (nome) el.inputName.value = nome;
+      if (empresa) el.inputCompany.value = empresa;
+      if (triagemId && el.linkedTriagemId) el.linkedTriagemId.value = triagemId;
+
+      if (el.triageImportBanner) {
+        el.triageImportBanner.classList.remove('hidden');
+        el.triageImportTitle.textContent = codigo
+          ? `Encaminhado da Triagem Clínica (Cód. ${codigo})`
+          : 'Encaminhado da Triagem Clínica';
+        el.triageImportDesc.textContent = 'Preencha o WhatsApp e escolha os procedimentos de bem-estar.';
+      }
+
+      // Limpa query string da barra de endereço sem recarregar
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => el.inputPhone.focus(), 60);
+    }
+  } catch {
+    // ignora parâmetros malformados
+  }
+}
+
+function clearTriageImport() {
+  if (el.linkedTriagemId) el.linkedTriagemId.value = '';
+  if (el.triageImportBanner) el.triageImportBanner.classList.add('hidden');
 }
 
 function loadStateFromLocalStorage() {
@@ -233,69 +309,74 @@ function loadStateFromLocalStorage() {
   }
 }
 
-async function syncFromServerIfAvailable() {
-  if (window.location.protocol === 'file:') return;
-  try {
-    const res = await fetch('/api/state');
-    if (!res.ok) return;
-    const serverData = await res.json();
-    if (Array.isArray(serverData.records) && serverData.records.length > 0 && state.records.length === 0) {
-      state.records = serverData.records;
-      rebuildRecordIndex();
-      if (Array.isArray(serverData.services) && serverData.services.length > 0) {
-        state.services = serverData.services;
-      }
-      if (serverData.eventTitle) {
-        state.eventTitle = serverData.eventTitle;
-        el.eventTitle.textContent = serverData.eventTitle;
-      }
-      saveStateToLocalStorageOnly();
-      renderAll();
-    } else if (state.records.length > 0) {
-      pushStateToServer();
-    }
-  } catch {
-    // Offline mode
-  }
-}
-
 function saveStateToLocalStorageOnly() {
   setCachedStorage(STORAGE_KEYS.EVENT_TITLE, state.eventTitle);
   setCachedStorage(STORAGE_KEYS.SERVICES, JSON.stringify(state.services));
   setCachedStorage(STORAGE_KEYS.RECORDS, JSON.stringify(state.records.map(minimizeRecord)));
 }
 
-async function pushStateToServer() {
-  if (window.location.protocol === 'file:') return;
+async function syncFromServerIfAvailable() {
+  if (window.location.protocol === 'file:') {
+    setStatusBadge(false, 'Modo Local');
+    return;
+  }
+
   try {
-    await fetch('/api/state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventTitle: state.eventTitle,
-        services: state.services,
-        records: state.records,
-      }),
-    });
+    const [resPres, resEmp] = await Promise.all([
+      fetch('/api/presencas'),
+      fetch('/api/integracao/empresas').catch(() => null),
+    ]);
+
+    if (!resPres.ok) throw new Error('API indisponível');
+    const serverData = await resPres.json();
+
+    if (resEmp && resEmp.ok) {
+      const empData = await resEmp.json();
+      if (Array.isArray(empData.empresas)) {
+        state.sharedCompanies = empData.empresas;
+      }
+    }
+
+    // Se o servidor está vazio mas o navegador tinha registros locais offline, sobe para o banco
+    if (Array.isArray(serverData.records) && serverData.records.length === 0 && state.records.length > 0) {
+      await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventTitle: state.eventTitle,
+          services: state.services,
+          records: state.records,
+        }),
+      });
+      const resReload = await fetch('/api/presencas');
+      if (resReload.ok) {
+        const reloaded = await resReload.json();
+        applyServerData(reloaded);
+      }
+    } else {
+      applyServerData(serverData);
+    }
+
+    setStatusBadge(true, 'Banco Conectado');
   } catch {
-    // Offline fallback
+    setStatusBadge(false, 'Salvo Local');
   }
 }
 
-function saveStateToStorage() {
-  if (el.storageStatusText) {
-    el.storageStatusText.textContent = 'Salvando...';
+function applyServerData(serverData) {
+  if (Array.isArray(serverData.records)) {
+    state.records = serverData.records;
+    rebuildRecordIndex();
   }
-  if (idleSaveHandle && typeof window.cancelIdleCallback === 'function') {
-    window.cancelIdleCallback(idleSaveHandle);
+  if (Array.isArray(serverData.services) && serverData.services.length > 0) {
+    state.services = serverData.services;
   }
-  idleSaveHandle = scheduleIdleWork(() => {
-    saveStateToLocalStorageOnly();
-    pushStateToServer();
-    if (el.storageStatusText) {
-      el.storageStatusText.textContent = 'Salvo';
-    }
-  });
+  if (serverData.eventTitle && document.activeElement !== el.eventTitle) {
+    state.eventTitle = serverData.eventTitle;
+    el.eventTitle.textContent = serverData.eventTitle;
+  }
+  saveStateToLocalStorageOnly();
+  renderAll();
 }
 
 function switchMobileView(viewName) {
@@ -454,7 +535,7 @@ function toggleFormService(serviceName) {
   renderServicesSelector();
 }
 
-function addCustomService() {
+async function addCustomService() {
   const raw = el.inputNewService.value.trim();
   if (!raw) return;
 
@@ -465,7 +546,14 @@ function addCustomService() {
   } else {
     state.services.push(raw);
     state.selectedFormServices.add(raw);
-    saveStateToStorage();
+    saveStateToLocalStorageOnly();
+    if (window.location.protocol !== 'file:') {
+      fetch('/api/presencas/servicos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: raw }),
+      }).catch(() => {});
+    }
   }
 
   el.inputNewService.value = '';
@@ -474,10 +562,13 @@ function addCustomService() {
   renderStatsAndDerivedLists();
 }
 
-function removeCustomService(serviceName) {
+async function removeCustomService(serviceName) {
   state.services = state.services.filter((s) => s !== serviceName);
   state.selectedFormServices.delete(serviceName);
-  saveStateToStorage();
+  saveStateToLocalStorageOnly();
+  if (window.location.protocol !== 'file:') {
+    fetch('/api/presencas/servicos/' + encodeURIComponent(serviceName), { method: 'DELETE' }).catch(() => {});
+  }
   renderServicesSelector();
   renderStatsAndDerivedLists();
 }
@@ -487,10 +578,18 @@ function renderStatsAndDerivedLists() {
   const totalParticipants = records.length;
 
   let totalProcedures = 0;
+  let totalWithTriage = 0;
   const companyNormSet = new Set();
   const companyCounts = Object.create(null);
   const countsByService = Object.create(null);
   const allServicesInUse = new Set(state.services);
+
+  // Inclui empresas compartilhadas do módulo de Triagem nas sugestões
+  for (const sharedComp of state.sharedCompanies) {
+    if (sharedComp && !companyCounts[sharedComp]) {
+      companyCounts[sharedComp] = 0;
+    }
+  }
 
   for (let i = 0; i < totalParticipants; i++) {
     const rec = records[i];
@@ -498,6 +597,9 @@ function renderStatsAndDerivedLists() {
     if (comp) {
       companyNormSet.add(comp.toLowerCase());
       companyCounts[comp] = (companyCounts[comp] || 0) + 1;
+    }
+    if (rec.triagemRealizada) {
+      totalWithTriage++;
     }
 
     const srvs = Array.isArray(rec.services) ? rec.services : [];
@@ -514,6 +616,9 @@ function renderStatsAndDerivedLists() {
   el.statParticipants.textContent = totalParticipants;
   el.statServicesTotal.textContent = totalProcedures;
   el.statCompanies.textContent = uniqueCompaniesCount;
+  if (el.statTriagensLinked) {
+    el.statTriagensLinked.textContent = totalWithTriage;
+  }
 
   if (el.statAvgPerPerson) {
     el.statAvgPerPerson.textContent = '';
@@ -521,7 +626,9 @@ function renderStatsAndDerivedLists() {
 
   el.mobileStatParticipants.textContent = totalParticipants;
   el.mobileStatServices.textContent = totalProcedures;
-  el.mobileStatCompanies.textContent = uniqueCompaniesCount;
+  if (el.mobileStatTriagens) {
+    el.mobileStatTriagens.textContent = totalWithTriage;
+  }
   el.navListBadge.textContent = totalParticipants;
 
   const currentFilterVal = el.filterService.value;
@@ -605,6 +712,9 @@ function getFilteredAndSortedRecords() {
     const companyMatch = rec.company && rec.company.toLowerCase().includes(query);
     if (companyMatch) return true;
 
+    const codeMatch = rec.codigoTriagem && rec.codigoTriagem.toLowerCase().includes(query);
+    if (codeMatch) return true;
+
     const phoneMatch =
       (rec.phone && rec.phone.toLowerCase().includes(query)) ||
       (queryDigits.length > 0 && rec.phone && rec.phone.replace(NON_DIGIT_RE, '').includes(queryDigits));
@@ -646,6 +756,15 @@ function updateActiveFilterBanner(filteredCount) {
   el.activeFilterBanner.classList.remove('hidden');
 }
 
+function buildTriageStatusHTML(rec) {
+  if (rec.triagemRealizada) {
+    const label = rec.codigoTriagem ? `✓ Cód. ${escapeHTML(rec.codigoTriagem)}` : '✓ Concluída';
+    return `<a href="/triagem/#atendimentos" class="triage-badge-done" title="Ver na fila de atendimentos da Triagem">${label}</a>`;
+  }
+  const url = `/triagem/?from_presenca=${encodeURIComponent(rec.id)}#triagem`;
+  return `<a href="${url}" class="btn-triage-link no-print" title="Abrir ficha na Triagem Clínica com nome e empresa preenchidos">🩺 Triar</a>`;
+}
+
 function renderListAndTable() {
   const list = getFilteredAndSortedRecords();
   const hasAnyRecords = state.records.length > 0;
@@ -683,6 +802,7 @@ function renderListAndTable() {
       .join('');
     const isEditing = state.editingId === rec.id;
     const formattedTime = formatDateTime(rec.createdAt);
+    const triageHTML = buildTriageStatusHTML(rec);
 
     mobileCardsHTML.push(`
       <article class="participant-card ${isEditing ? 'editing-row' : ''}">
@@ -714,7 +834,10 @@ function renderListAndTable() {
         </div>
 
         <div class="p-card-footer">
-          <span class="time-cell">${formattedTime}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="time-cell">${formattedTime}</span>
+            ${triageHTML}
+          </div>
           <div class="row-actions no-print">
             <button type="button" class="action-btn" data-edit-id="${rec.id}">Editar</button>
             <button type="button" class="action-btn delete-btn" data-delete-id="${rec.id}">Excluir</button>
@@ -753,6 +876,7 @@ function renderListAndTable() {
             </button>
           </div>
         </td>
+        <td class="col-triage">${triageHTML}</td>
         <td class="col-time time-cell">${formattedTime}</td>
         <td class="col-actions no-print">
           <div class="row-actions">
@@ -768,13 +892,14 @@ function renderListAndTable() {
   el.attendanceTableBody.innerHTML = tableRowsHTML.join('');
 }
 
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
   e.preventDefault();
 
   const name = el.inputName.value.trim();
   const phone = el.inputPhone.value.trim();
   const company = el.inputCompany.value.trim();
   const notes = el.inputNotes.value.trim();
+  const triagemId = el.linkedTriagemId ? el.linkedTriagemId.value.trim() : '';
   const selectedServices = Array.from(state.selectedFormServices);
 
   if (!name || !phone || !company) {
@@ -798,24 +923,63 @@ function handleFormSubmit(e) {
       existing.services = selectedServices;
       existing.notes = notes;
       existing.updatedAt = new Date().toISOString();
+
+      saveStateToLocalStorageOnly();
+      if (window.location.protocol !== 'file:') {
+        fetch('/api/presencas/' + encodeURIComponent(existing.id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(existing),
+        })
+          .then((r) => setStatusBadge(r.ok))
+          .catch(() => setStatusBadge(false));
+      }
       showToast(`Registro de ${name} atualizado.`);
     }
   } else {
     const newRecord = minimizeRecord({
-      id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      id: generateUUID(),
       name,
       phone,
       company,
       services: selectedServices,
       notes,
+      triagemId: triagemId || null,
+      triagemRealizada: Boolean(triagemId),
       createdAt: new Date().toISOString(),
     });
+
     state.records.unshift(newRecord);
     state.recordById.set(newRecord.id, newRecord);
+    saveStateToLocalStorageOnly();
+
+    if (window.location.protocol !== 'file:') {
+      fetch('/api/presencas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRecord),
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error();
+          const payload = await res.json();
+          if (payload && payload.record) {
+            const idx = state.records.findIndex((r) => r.id === newRecord.id);
+            const merged = minimizeRecord(payload.record);
+            if (idx >= 0) state.records[idx] = merged;
+            state.recordById.delete(newRecord.id);
+            state.recordById.set(merged.id, merged);
+            saveStateToLocalStorageOnly();
+            renderAll();
+          }
+          setStatusBadge(true);
+        })
+        .catch(() => setStatusBadge(false));
+    }
+
     showToast(`Presença de ${name} registrada.`);
   }
 
-  saveStateToStorage();
+  clearTriageImport();
   resetForm();
   renderAll();
 
@@ -888,7 +1052,10 @@ function deleteRecord(id) {
   if (state.editingId === id) {
     resetForm();
   }
-  saveStateToStorage();
+  saveStateToLocalStorageOnly();
+  if (window.location.protocol !== 'file:') {
+    fetch('/api/presencas/' + encodeURIComponent(id), { method: 'DELETE' }).catch(() => {});
+  }
   renderAll();
   showToast('Registro excluído.');
 }
@@ -931,7 +1098,14 @@ function renderQuickModalServices(rec) {
       }
       rec.services = Array.from(currentSet);
       rec.updatedAt = new Date().toISOString();
-      saveStateToStorage();
+      saveStateToLocalStorageOnly();
+      if (window.location.protocol !== 'file:') {
+        fetch('/api/presencas/' + encodeURIComponent(rec.id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ services: rec.services }),
+        }).catch(() => {});
+      }
       renderQuickModalServices(rec);
       renderStatsAndDerivedLists();
       renderListAndTable();
@@ -960,6 +1134,7 @@ function exportToCSV() {
     'Empresa',
     'Procedimentos',
     'Qtd. Procedimentos',
+    'Triagem Clínica',
     'Observações',
     'Data e Hora',
   ];
@@ -974,6 +1149,9 @@ function exportToCSV() {
   const rows = recordsToExport.map((rec, idx) => {
     const dateStr = new Date(rec.createdAt).toLocaleString('pt-BR');
     const servicesList = (rec.services || []).join(', ');
+    const statusTri = rec.triagemRealizada
+      ? (rec.codigoTriagem ? `Sim (${rec.codigoTriagem})` : 'Sim')
+      : 'Pendente';
     return [
       idx + 1,
       rec.name,
@@ -981,6 +1159,7 @@ function exportToCSV() {
       rec.company,
       servicesList,
       (rec.services || []).length,
+      statusTri,
       rec.notes || '',
       dateStr,
     ]
@@ -1031,7 +1210,7 @@ function importBackupJSON(file) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const data = JSON.parse(e.target.result);
       if (!Array.isArray(data.records)) {
@@ -1059,7 +1238,20 @@ function importBackupJSON(file) {
         el.eventTitle.textContent = data.eventTitle;
       }
 
-      saveStateToStorage();
+      saveStateToLocalStorageOnly();
+      if (window.location.protocol !== 'file:') {
+        await fetch('/api/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            replaceAll: true,
+            eventTitle: state.eventTitle,
+            services: state.services,
+            records: state.records,
+          }),
+        }).catch(() => {});
+        await syncFromServerIfAvailable();
+      }
       renderAll();
       el.backupModal.classList.add('hidden');
       showToast('Backup restaurado.');
@@ -1083,7 +1275,10 @@ function clearAllData() {
   state.records = [];
   state.recordById.clear();
   resetForm();
-  saveStateToStorage();
+  saveStateToLocalStorageOnly();
+  if (window.location.protocol !== 'file:') {
+    fetch('/api/presencas', { method: 'DELETE' }).catch(() => {});
+  }
   renderAll();
   el.backupModal.classList.add('hidden');
   showToast('Registros apagados.');
@@ -1135,6 +1330,10 @@ function bindEvents() {
     }
   });
 
+  if (el.btnClearTriageImport) {
+    el.btnClearTriageImport.addEventListener('click', clearTriageImport);
+  }
+
   el.navTabs.forEach((btn) => {
     btn.addEventListener('click', () => {
       switchMobileView(btn.dataset.targetView);
@@ -1145,7 +1344,14 @@ function bindEvents() {
     const newTitle = el.eventTitle.textContent.trim() || 'Lista de Presença — Massoterapia';
     state.eventTitle = newTitle;
     el.eventTitle.textContent = newTitle;
-    saveStateToStorage();
+    saveStateToLocalStorageOnly();
+    if (window.location.protocol !== 'file:') {
+      fetch('/api/presencas/evento', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventTitle: newTitle }),
+      }).catch(() => {});
+    }
   });
 
   el.eventTitle.addEventListener('keydown', (e) => {
@@ -1187,6 +1393,7 @@ function bindEvents() {
   el.form.addEventListener('submit', handleFormSubmit);
   el.btnCancelEdit.addEventListener('click', () => {
     const wasEditing = Boolean(state.editingId);
+    clearTriageImport();
     resetForm();
     if (wasEditing && window.innerWidth < 1024) {
       switchMobileView('list');
