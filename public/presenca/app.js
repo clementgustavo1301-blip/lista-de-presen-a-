@@ -365,8 +365,10 @@ async function syncFromServerIfAvailable() {
 
 function applyServerData(serverData) {
   if (Array.isArray(serverData.records)) {
-    state.records = serverData.records;
-    rebuildRecordIndex();
+    if (serverData.records.length > 0 || state.records.length === 0) {
+      state.records = serverData.records;
+      rebuildRecordIndex();
+    }
   }
   if (Array.isArray(serverData.services) && serverData.services.length > 0) {
     state.services = serverData.services;

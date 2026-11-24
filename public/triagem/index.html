@@ -953,7 +953,15 @@ async function sincronizarTriagens() {
     const res = await apiFetch('/api/triagens');
     if (res.ok) {
       const lista = await res.json();
-      setReal(lista);
+      if (Array.isArray(lista) && (lista.length > 0 || S.real.length === 0)) {
+        setReal(lista);
+      } else if (Array.isArray(lista) && lista.length === 0 && S.real.length > 0) {
+        // Se outra instância serverless em memória retornou vazio, verifica se já está em Postgres antes de limpar
+        const h = await fetch(API_BASE + '/api/health').then(r => r.json()).catch(() => null);
+        if (h && h.database === 'postgres') {
+          setReal(lista);
+        }
+      }
     }
     await carregarIntegracaoPresenca();
   } catch (e) {
