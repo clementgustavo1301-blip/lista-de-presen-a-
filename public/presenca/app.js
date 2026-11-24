@@ -496,12 +496,11 @@ function renderServicesSelector() {
         <span class="service-check">✓</span>
         <span class="service-chip-name">${escapeHTML(serviceName)}</span>
       </div>
-      ${
-        isCustom
-          ? `<button type="button" class="service-remove-btn" data-remove-service="${escapeHTML(
-              serviceName
-            )}" title="Remover">✕</button>`
-          : ''
+      ${isCustom
+        ? `<button type="button" class="service-remove-btn" data-remove-service="${escapeHTML(
+          serviceName
+        )}" title="Remover">✕</button>`
+        : ''
       }
     `;
 
@@ -554,7 +553,7 @@ async function addCustomService() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome: raw }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 
@@ -569,7 +568,7 @@ async function removeCustomService(serviceName) {
   state.selectedFormServices.delete(serviceName);
   saveStateToLocalStorageOnly();
   if (window.location.protocol !== 'file:') {
-    fetch('/api/presencas/servicos/' + encodeURIComponent(serviceName), { method: 'DELETE' }).catch(() => {});
+    fetch('/api/presencas/servicos/' + encodeURIComponent(serviceName), { method: 'DELETE' }).catch(() => { });
   }
   renderServicesSelector();
   renderStatsAndDerivedLists();
@@ -664,9 +663,8 @@ function renderStatsAndDerivedLists() {
         .slice(0, 4)
         .map((comp) => {
           const isCurrent = currentInputCompany === comp.toLowerCase();
-          return `<button type="button" class="quick-company-chip ${
-            isCurrent ? 'active-company-chip' : ''
-          }" data-quick-company="${escapeHTML(comp)}">${escapeHTML(comp)}</button>`;
+          return `<button type="button" class="quick-company-chip ${isCurrent ? 'active-company-chip' : ''
+            }" data-quick-company="${escapeHTML(comp)}">${escapeHTML(comp)}</button>`;
         })
         .join('');
   }
@@ -816,11 +814,10 @@ function renderListAndTable() {
             </div>
             <div class="p-card-meta">
               <span>${escapeHTML(rec.phone)}</span>
-              ${
-                waLink
-                  ? `<a href="${waLink}" target="_blank" rel="noopener" class="whatsapp-link">WhatsApp</a>`
-                  : ''
-              }
+              ${waLink
+        ? `<a href="${waLink}" target="_blank" rel="noopener" class="whatsapp-link">WhatsApp</a>`
+        : ''
+      }
             </div>
           </div>
           <span class="company-badge">${escapeHTML(rec.company)}</span>
@@ -857,11 +854,10 @@ function renderListAndTable() {
         </td>
         <td class="col-phone">
           ${escapeHTML(rec.phone)}
-          ${
-            waLink
-              ? ` <a href="${waLink}" target="_blank" rel="noopener" class="whatsapp-link no-print">WhatsApp</a>`
-              : ''
-          }
+          ${waLink
+        ? ` <a href="${waLink}" target="_blank" rel="noopener" class="whatsapp-link no-print">WhatsApp</a>`
+        : ''
+      }
         </td>
         <td class="col-company">
           <span class="company-badge">${escapeHTML(rec.company)}</span>
@@ -1056,7 +1052,7 @@ function deleteRecord(id) {
   }
   saveStateToLocalStorageOnly();
   if (window.location.protocol !== 'file:') {
-    fetch('/api/presencas/' + encodeURIComponent(id), { method: 'DELETE' }).catch(() => {});
+    fetch('/api/presencas/' + encodeURIComponent(id), { method: 'DELETE' }).catch(() => { });
   }
   renderAll();
   showToast('Registro excluído.');
@@ -1106,7 +1102,7 @@ function renderQuickModalServices(rec) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ services: rec.services }),
-        }).catch(() => {});
+        }).catch(() => { });
       }
       renderQuickModalServices(rec);
       renderStatsAndDerivedLists();
@@ -1251,7 +1247,7 @@ function importBackupJSON(file) {
             services: state.services,
             records: state.records,
           }),
-        }).catch(() => {});
+        }).catch(() => { });
         await syncFromServerIfAvailable();
       }
       renderAll();
@@ -1279,7 +1275,7 @@ function clearAllData() {
   resetForm();
   saveStateToLocalStorageOnly();
   if (window.location.protocol !== 'file:') {
-    fetch('/api/presencas', { method: 'DELETE' }).catch(() => {});
+    fetch('/api/presencas', { method: 'DELETE' }).catch(() => { });
   }
   renderAll();
   el.backupModal.classList.add('hidden');
@@ -1352,7 +1348,7 @@ function bindEvents() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventTitle: newTitle }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
   });
 
