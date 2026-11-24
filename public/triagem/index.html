@@ -368,9 +368,10 @@ dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
               <input class="in" id="i-emp" maxlength="60" list="dl-emp" placeholder="Empresa que encaminhou">
               <datalist id="dl-emp"></datalist>
             </label>
-            <div class="f"><span>Tipo de exame<em>opcional</em></span>
+            <div class="f"><span>Tipo de exame / atendimento<em>opcional</em></span>
               <div class="chips" data-choice="i-tipo" role="group" aria-label="Tipo de exame"></div>
               <input type="hidden" id="i-tipo" value="">
+              <input class="in" id="i-tipo-outro" maxlength="40" placeholder="Especifique o tipo de atendimento (opcional)" hidden style="margin-top:4px">
             </div>
           </section>
 
@@ -640,7 +641,7 @@ document.addEventListener('click', ev => {
 });
 
 /* ================= classificações ================= */
-const TIPOS = ['Admissional', 'Periódico', 'Retorno ao trabalho', 'Mudança de riscos ocupacionais', 'Demissional'];
+const TIPOS = ['Admissional', 'Periódico', 'Retorno ao trabalho', 'Mudança de riscos ocupacionais', 'Demissional', 'Outro'];
 const PA = {
   baixa:  { l: 'Abaixo de 90/60',        c: 'low',     f: '< 90 ou < 60' },
   normal: { l: 'Normal',                 c: 'good',    f: '< 120 e < 80' },
@@ -1118,7 +1119,7 @@ function mostrarFicha(hash) {
 }
 
 /* ================= formulário ================= */
-const F = { nome: $('#i-nome'), dn: $('#i-dn'), sx: $('#i-sx'), emp: $('#i-emp'), tipo: $('#i-tipo'), pas: $('#i-pas'), pad: $('#i-pad'), fc: $('#i-fc'), kg: $('#i-kg'), cm: $('#i-cm'), obs: $('#i-obs'), enf: $('#i-enf') };
+const F = { nome: $('#i-nome'), dn: $('#i-dn'), sx: $('#i-sx'), emp: $('#i-emp'), tipo: $('#i-tipo'), tipoOutro: $('#i-tipo-outro'), pas: $('#i-pas'), pad: $('#i-pad'), fc: $('#i-fc'), kg: $('#i-kg'), cm: $('#i-cm'), obs: $('#i-obs'), enf: $('#i-enf') };
 const CAMPOS = ['nome', 'dn', 'pas', 'pad', 'fc', 'kg', 'cm'];
 const pn = v => { const n = parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
 function lerMedidas() {
@@ -1152,13 +1153,21 @@ function validar() {
   CAMPOS.forEach(k => setErr(k, er[k]));
   const first = CAMPOS.find(k => er[k]);
   if (first) { F[first].focus(); return null; }
-  return Object.assign(m, { n: nome, dn: F.dn.value || '', sx: F.sx.value, emp: F.emp.value.replace(/\s+/g, ' ').trim(), tipo: F.tipo.value, obs: F.obs.value.trim(), enf: F.enf.value.replace(/\s+/g, ' ').trim() });
+  const tipoFinal = F.tipo.value === 'Outro' ? (F.tipoOutro.value.replace(/\s+/g, ' ').trim() || 'Outro') : F.tipo.value;
+  return Object.assign(m, { n: nome, dn: F.dn.value || '', sx: F.sx.value, emp: F.emp.value.replace(/\s+/g, ' ').trim(), tipo: tipoFinal, obs: F.obs.value.trim(), enf: F.enf.value.replace(/\s+/g, ' ').trim() });
+}
+function toggleTipoOutro() {
+  if (!F.tipoOutro) return;
+  const isOutro = F.tipo.value === 'Outro';
+  F.tipoOutro.hidden = !isOutro;
+  if (!isOutro) F.tipoOutro.value = '';
 }
 function limparForm() {
   const enf = F.enf.value;
   $('#form').reset();
   F.enf.value = enf;
   setChoice('i-sx', ''); setChoice('i-tipo', '');
+  toggleTipoOutro();
   CAMPOS.forEach(k => setErr(k, ''));
   $('#e-form').textContent = '';
   S.editing = null;
@@ -1171,7 +1180,15 @@ function limparForm() {
 function editar(r) {
   S.editing = r.id;
   F.nome.value = r.n; F.dn.value = r.dn; F.emp.value = r.emp;
-  setChoice('i-sx', r.sx); setChoice('i-tipo', TIPOS.includes(r.tipo) ? r.tipo : '');
+  setChoice('i-sx', r.sx);
+  if (r.tipo && !TIPOS.includes(r.tipo)) {
+    setChoice('i-tipo', 'Outro');
+    toggleTipoOutro();
+    F.tipoOutro.value = r.tipo;
+  } else {
+    setChoice('i-tipo', TIPOS.includes(r.tipo) ? r.tipo : '');
+    toggleTipoOutro();
+  }
   F.pas.value = r.pas; F.pad.value = r.pad; F.fc.value = r.fc;
   F.kg.value = String(r.kg).replace('.', ','); F.cm.value = String(r.cm).replace('.', ',');
   F.obs.value = r.obs; if (r.enf) F.enf.value = r.enf;
@@ -1183,6 +1200,10 @@ function editar(r) {
   F.pas.focus();
 }
 $('#form').addEventListener('input', renderPrev);
+F.tipo.addEventListener('change', () => {
+  toggleTipoOutro();
+  if (F.tipo.value === 'Outro' && F.tipoOutro) setTimeout(() => F.tipoOutro.focus(), 30);
+});
 $('#b-limpar').addEventListener('click', () => { limparForm(); F.nome.focus(); });
 $('#b-desvincular-presenca').addEventListener('click', limparVinculoPresenca);
 $('#presenca-queue-chips').addEventListener('click', ev => {

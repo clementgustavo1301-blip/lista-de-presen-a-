@@ -59,7 +59,8 @@ begin
   end if;
 end $$;
 
--- Garantir novos valores caso o enum cargo_profissional já existisse da versão anterior
+-- Garantir novos valores caso os enums já existissem da versão anterior
+alter type public.tipo_exame_ocupacional add value if not exists 'Outro';
 alter type public.cargo_profissional add value if not exists 'massoterapeuta';
 alter type public.cargo_profissional add value if not exists 'fisioterapeuta';
 alter type public.cargo_profissional add value if not exists 'recepcao';
