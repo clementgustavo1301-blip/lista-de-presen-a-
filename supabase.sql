@@ -520,6 +520,7 @@ create index if not exists idx_presencas_evento_nome_trgm on public.presencas_ev
 
 -- Índices operacionais de Triagem e Usuários
 create index if not exists idx_usuarios_email_lower on public.usuarios (lower(email));
+create unique index if not exists ux_empresas_razao_social_lower on public.empresas (lower(trim(razao_social)));
 create index if not exists idx_empresas_nome_lower on public.empresas (lower(coalesce(nome_fantasia, razao_social)));
 create index if not exists idx_pacientes_nome_trgm on public.pacientes using gin (nome_completo gin_trgm_ops);
 create index if not exists idx_triagens_ts_desc on public.triagens (ts desc) where not excluido;
@@ -1441,11 +1442,13 @@ values
   ('Triagem de Enfermagem', 'triagem', 7)
 on conflict (nome) do nothing;
 
--- 12.3 Empresa Padrão
+-- 12.3 Empresa Padrão (idempotente com ux_empresas_razao_social_lower)
 insert into public.empresas (razao_social, nome_fantasia, setor_atividade)
-values
-  ('EcoSafety Saúde e Segurança do Trabalho Ltda', 'EcoSafety', 'SST e Bem-Estar')
-on conflict do nothing;
+select 'EcoSafety Saúde e Segurança do Trabalho Ltda', 'EcoSafety', 'SST e Bem-Estar'
+where not exists (
+  select 1 from public.empresas
+  where lower(trim(razao_social)) = lower('EcoSafety Saúde e Segurança do Trabalho Ltda')
+);
 
 -- Limpeza automática de eventuais registros fictícios de demonstração anteriores
 delete from public.triagens where codigo_acesso in ('EX001', 'EX002', 'EX003', 'EX004', 'EX005');
