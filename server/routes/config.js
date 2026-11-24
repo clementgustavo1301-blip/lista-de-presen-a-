@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
         clinica: 'EcoSafety & EcoClinic — Saúde Ocupacional',
         unidade: 'Matriz',
         url: '',
-        modo: 'texto',
+        modo: 'link',
         evento_titulo: 'Lista de Presença — Massoterapia',
       });
     }
