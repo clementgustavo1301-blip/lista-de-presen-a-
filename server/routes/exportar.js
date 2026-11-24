@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const clinicaService = require('../services/clinicaService');
-const { requireAuth } = require('../services/authService');
 
 function escapeCSV(val) {
   let str = String(val == null ? '' : val);
@@ -14,7 +13,7 @@ function escapeCSV(val) {
 }
 
 // GET /api/exportar/csv — Exportação de Triagens (Completa ou Anonimizada LGPD)
-router.get('/csv', requireAuth, async (req, res) => {
+router.get('/csv', async (req, res) => {
   try {
     const anon = req.query.anon === 'true' || req.query.anon === '1';
 

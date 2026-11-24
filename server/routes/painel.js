@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const clinicaService = require('../services/clinicaService');
-const { requireAuth } = require('../services/authService');
 
 const FAIXAS_ETARIAS = [
   { min: 0, max: 29, rotulo: 'Até 29 anos' },
@@ -20,7 +19,7 @@ function obterFaixaEtaria(dn, dataRef) {
   return f ? f.rotulo : '60 anos ou mais';
 }
 
-router.get('/estatisticas', requireAuth, async (req, res) => {
+router.get('/estatisticas', async (req, res) => {
   try {
     const { periodo, de, ate, empresa, tipo, sexo, dimensao = 'emp' } = req.query;
 

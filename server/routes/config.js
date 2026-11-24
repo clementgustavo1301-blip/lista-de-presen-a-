@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth, requireRole } = require('../services/authService');
 
 // Obter configurações atuais (Clínica + Evento)
 router.get('/', async (req, res) => {
@@ -26,8 +25,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Atualizar configurações (Apenas administradores)
-router.put('/', requireAuth, requireRole('administrador'), async (req, res) => {
+// Atualizar configurações
+router.put('/', async (req, res) => {
   try {
     const { clinica, unidade, url, modo, evento_titulo } = req.body;
     const atual = await db.get('SELECT evento_titulo FROM configuracoes WHERE id = ?', ['geral']);

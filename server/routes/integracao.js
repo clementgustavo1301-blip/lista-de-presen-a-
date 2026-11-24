@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAuth } = require('../services/authService');
 const { fetchFullPresencaState } = require('./presencas');
 
 // GET /api/integracao/resumo — Indicadores agregados ao vivo (Portal e barras de navegação, sem dados sensíveis LGPD)
@@ -120,7 +119,7 @@ router.get('/empresas', async (req, res) => {
 });
 
 // POST /api/integracao/vincular — Vincula explicitamente uma triagem a um registro de presença
-router.post('/vincular', requireAuth, async (req, res) => {
+router.post('/vincular', async (req, res) => {
   try {
     const { presencaId, triagemId } = req.body || {};
     if (!presencaId || !triagemId) {

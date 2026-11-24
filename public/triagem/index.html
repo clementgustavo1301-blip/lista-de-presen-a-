@@ -351,7 +351,7 @@ dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
     </nav>
     <span class="status" id="status" role="status"><i></i><span id="status-t">Conectando…</span></span>
 
-    <div class="user-badge" id="user-badge" style="margin-top:auto;padding:12px;background:var(--sheet);border-radius:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--sh-1);border:1px solid var(--line)">
+    <div class="user-badge" id="user-badge" hidden style="margin-top:auto;padding:12px;background:var(--sheet);border-radius:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--sh-1);border:1px solid var(--line)">
       <div style="display:flex;align-items:center;gap:10px">
         <span class="av" id="user-avatar" style="width:36px;height:36px;font-size:13px;border-radius:12px">ME</span>
         <div style="display:flex;flex-direction:column;min-width:0;line-height:1.2">
@@ -778,52 +778,16 @@ function setAuth(token, user) {
 }
 async function apiFetch(url, options = {}) {
   const fullUrl = url.startsWith('http') ? url : (API_BASE + url);
-  const token = getAuthToken();
   options.headers = options.headers || {};
-  if (token && token !== 'offline-token') {
-    options.headers['Authorization'] = 'Bearer ' + token;
-  }
-  const res = await fetch(fullUrl, options);
-  if (res.status === 401 && !location.hash.startsWith('#f.')) {
-    setAuth(null, null);
-    verificarAcesso();
-    throw new Error('Sessão expirada. Faça login novamente.');
-  }
-  return res;
+  return fetch(fullUrl, options);
 }
 function renderAuthUser() {
-  const user = getAuthUser();
   const badge = $('#user-badge');
-  if (!badge) return;
-  if (!user) { badge.hidden = true; return; }
-  badge.hidden = false;
-  $('#user-avatar').textContent = iniciais(user.nome);
-  $('#user-nome').textContent = user.nome;
-  const cargoLabels = {
-    administrador: 'Administrador(a)',
-    enfermeiro: 'Enfermeiro(a)',
-    tecnico_enfermagem: 'Téc. Enfermagem',
-    medico_trabalho: 'Médico do Trabalho'
-  };
-  $('#user-cargo').textContent = cargoLabels[user.cargo] || user.cargo;
-  if (F && F.enf && !F.enf.value) {
-    F.enf.value = user.nome;
-  }
+  if (badge) badge.hidden = true;
 }
 function verificarAcesso() {
-  const h = location.hash.slice(1);
-  if (h.slice(0, 2) === 'f.') {
-    $('#view-login').hidden = true;
-    return true;
-  }
-  const user = getAuthUser();
-  if (!user || !getAuthToken()) {
-    $('#app').hidden = true;
-    $('#ficha').hidden = true;
-    $('#view-login').hidden = false;
-    return false;
-  }
-  $('#view-login').hidden = true;
+  const loginView = $('#view-login');
+  if (loginView) loginView.hidden = true;
   renderAuthUser();
   return true;
 }
@@ -906,7 +870,7 @@ async function verificarParametroFromPresenca() {
       history.replaceState({}, document.title, location.pathname + location.hash);
     }
     const targetId = sessionStorage.getItem('ecoclinic.from_presenca');
-    if (!targetId || !getAuthToken()) return;
+    if (!targetId) return;
     sessionStorage.removeItem('ecoclinic.from_presenca');
 
     const res = await apiFetch('/api/presencas/' + encodeURIComponent(targetId));
@@ -1017,7 +981,7 @@ function msgErro(e) {
 
 // Sincronização periódica em segundo plano (multi-estações / enfermagem + médico)
 async function sincronizarTriagens() {
-  if (S.store !== 'db' || !getAuthToken()) return;
+  if (S.store !== 'db') return;
   try {
     const res = await apiFetch('/api/triagens');
     if (res.ok) {

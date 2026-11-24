@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const clinicaService = require('../services/clinicaService');
-const { requireAuth } = require('../services/authService');
 
 function sameLocalDay(isoA, isoB) {
   if (!isoA || !isoB) return false;
@@ -16,8 +15,8 @@ function sameLocalDay(isoA, isoB) {
   );
 }
 
-// Listar triagens com filtros (requer autenticação da equipe)
-router.get('/', requireAuth, async (req, res) => {
+// Listar triagens com filtros
+router.get('/', async (req, res) => {
   try {
     const { data, q } = req.query;
     let sql = 'SELECT * FROM triagens WHERE excluido = FALSE';
@@ -91,7 +90,7 @@ router.get('/codigo/:codigo', async (req, res) => {
 });
 
 // Criar nova triagem (com vínculo automático ou explícito à Lista de Presença)
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const body = req.body || {};
 
@@ -268,7 +267,7 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Atualizar/Corrigir triagem existente
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const body = req.body || {};
@@ -346,7 +345,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 });
 
 // Excluir triagem (Soft Delete + desfaz vínculo ativo na presença)
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const now = Date.now();
