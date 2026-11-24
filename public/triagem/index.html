@@ -230,7 +230,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px;min-width:580px}
 .lgpd li::before{content:"";position:absolute;left:2px;top:.6em;width:7px;height:7px;border-radius:50%;background:var(--accent)}
 
 /* ---------- diálogo do QR ---------- */
-dialog{border:0;padding:0;border-radius:28px;background:var(--sheet);color:var(--ink);width:min(840px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:var(--sh-2)}
+dialog{border:0;padding:0;margin:auto;overflow-y:auto;border-radius:28px;background:var(--sheet);color:var(--ink);width:min(840px,calc(100vw - 24px));max-height:calc(100vh - 24px);box-shadow:var(--sh-2)}
 dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
 .dlg{display:grid;grid-template-columns:minmax(0,310px) minmax(0,1fr);gap:26px;padding:26px}
 .dlg-qr{display:flex;flex-direction:column;gap:10px}
@@ -418,7 +418,7 @@ dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
           </section>
 
           <div class="actions">
-            <button class="btn pri big" id="b-salvar" type="submit">Salvar e gerar QR Code</button>
+            <button class="btn pri big" id="b-salvar" type="submit">Concluir e gerar QR Code</button>
             <button class="btn big" id="b-limpar" type="button">Limpar</button>
             <span class="err" id="e-form" role="alert"></span>
           </div>
@@ -1173,7 +1173,7 @@ function limparForm() {
   S.editing = null;
   limparVinculoPresenca();
   $('#tri-title').textContent = 'Nova triagem';
-  $('#b-salvar').textContent = 'Salvar e gerar QR Code';
+  $('#b-salvar').textContent = 'Concluir e gerar QR Code';
   $('#b-limpar').textContent = 'Limpar';
   renderPrev();
 }
