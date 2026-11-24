@@ -315,6 +315,36 @@
     }
 
     .table-wrap { overflow-x: auto; }
+    .journey-cards { display: none; flex-direction: column; gap: 10px; }
+    .j-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 13px 14px;
+      background: var(--subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .j-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .j-card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .j-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
 
     table {
       width: 100%;
@@ -367,11 +397,19 @@
       .modules-grid { grid-template-columns: 1fr; }
     }
 
+    @media (max-width: 720px) {
+      .table-wrap { display: none; }
+      .journey-cards { display: flex; }
+      .mod-actions .btn { width: 100%; min-height: 46px; }
+      .j-card-foot .btn { min-height: 38px; padding: 8px 14px; }
+    }
+
     @media (max-width: 540px) {
-      body { padding: 10px; }
-      .topbar, .module-panel, .journey-panel { padding: 18px; border-radius: 20px; }
+      body { padding: 10px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+      .topbar, .module-panel, .journey-panel { padding: 16px; border-radius: 20px; }
       .mod-features { grid-template-columns: 1fr; }
       .metric-val { font-size: 22px; }
+      .status-pill { width: 100%; justify-content: center; }
     }
   </style>
 </head>
@@ -496,6 +534,10 @@
         <span>Acompanhe quem já fez check-in e inicie a etapa seguinte com 1 clique</span>
       </div>
 
+      <div class="journey-cards" id="journeyCards">
+        <div class="empty-row">Carregando movimentação recente…</div>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -546,11 +588,49 @@
         document.getElementById('mEmpresas').textContent = data.totalEmpresasAtendidas + (data.totalEmpresasAtendidas === 1 ? ' empresa atendida' : ' empresas atendidas');
 
         const tbody = document.getElementById('journeyBody');
+        const cardsBox = document.getElementById('journeyCards');
         const items = data.jornadaRecente || [];
 
         if (!items.length) {
           tbody.innerHTML = '<tr><td colspan="6" class="empty-row">Nenhum atendimento registrado ainda. Comece pela Lista de Presença ou Nova Triagem.</td></tr>';
+          if (cardsBox) cardsBox.innerHTML = '<div class="empty-row">Nenhum atendimento registrado ainda. Comece pela Lista de Presença ou Nova Triagem.</div>';
           return;
+        }
+
+        if (cardsBox) {
+          cardsBox.innerHTML = items.map((item) => {
+            const presBadge = item.passouPresenca
+              ? `<span class="badge badge-ok">✓ ${(item.servicos && item.servicos.length) ? esc(item.servicos.slice(0, 2).join(', ')) + (item.servicos.length > 2 ? ' +' + (item.servicos.length - 2) : '') : 'Presença OK'}</span>`
+              : `<span class="badge badge-wait">Presença pendente</span>`;
+            const triBadge = item.passouTriagem
+              ? `<span class="badge badge-ok">✓ Triagem ${esc(item.codigoTriagem || 'OK')}</span>`
+              : `<span class="badge badge-wait">Triagem pendente</span>`;
+            let acao = '<span style="color:var(--muted);font-size:12.5px">Fluxo completo</span>';
+            if (item.passouPresenca && !item.passouTriagem) {
+              acao = `<a class="btn btn-sm btn-triagem" href="/triagem/?from_presenca=${encodeURIComponent(item.presencaId)}#triagem">🩺 Iniciar Triagem</a>`;
+            } else if (item.passouTriagem && !item.passouPresenca) {
+              const params = new URLSearchParams({
+                from_triagem: item.triagemId || '',
+                nome: item.nome || '',
+                empresa: item.empresa === 'Não informada' ? '' : (item.empresa || ''),
+                codigo: item.codigoTriagem || ''
+              });
+              acao = `<a class="btn btn-sm btn-presenca" href="/presenca/?${params.toString()}">+ Registrar Presença</a>`;
+            }
+            return `
+              <div class="j-card">
+                <div class="j-card-top">
+                  <strong>${esc(item.nome)}</strong>
+                  <span class="badge badge-company">${esc(item.empresa)}</span>
+                </div>
+                <div class="j-card-badges">${presBadge}${triBadge}</div>
+                <div class="j-card-foot">
+                  <span style="color:var(--muted);font-size:12.5px">${fmtHora(item.horario)}</span>
+                  ${acao}
+                </div>
+              </div>
+            `;
+          }).join('');
         }
 
         tbody.innerHTML = items.map((item) => {

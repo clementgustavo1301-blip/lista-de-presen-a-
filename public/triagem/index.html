@@ -278,10 +278,15 @@ dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
 }
 @media (max-width:560px){
   .g2{grid-template-columns:minmax(0,1fr)}
-  .mt{padding:11px 10px}
-  .mt input{font-size:18px}
+  .mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mt{padding:11px 12px}
+  .mt input{font-size:20px}
   .mt.pa{padding:13px 15px}
   .mt.pa input,.mt.pa .sl{font-size:26px}
+  .actions .btn.big{width:100%}
+  .nav{left:8px;right:8px;padding:5px;border-radius:20px}
+  .nav a{padding:8px 2px;font-size:10.5px;min-height:44px;justify-content:center}
+  .nav a svg{width:18px;height:18px}
   .dlg{grid-template-columns:minmax(0,1fr);padding:18px;gap:18px}
   .dlg-qr{max-width:270px;margin:0 auto;width:100%}
   .vh h1{font-size:20px}
