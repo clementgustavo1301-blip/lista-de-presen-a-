@@ -251,7 +251,14 @@ dialog::backdrop{background:rgba(5,16,13,.6);backdrop-filter:blur(6px)}
 .fx-card{background:var(--sheet);border-radius:28px;padding:22px 20px;display:flex;flex-direction:column;gap:18px}
 .fx-card h1{font:600 21px/1.25 var(--f-num);letter-spacing:-.02em;overflow-wrap:anywhere}
 .fx-meta{font-size:14px;color:var(--ink-2)}
+.fx-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fx-actions .btn{width:100%;min-height:46px;padding:11px 14px}
 .fx-foot{font-size:13px;color:var(--muted);text-align:center}
+@media print{
+  .fx-actions,.fx-voltar{display:none!important}
+  body{background:#ffffff!important}
+  #ficha{max-width:100%;padding:0}
+}
 
 @media (max-width:1180px){
   .g3{gap:22px}
@@ -1106,15 +1113,322 @@ function linhaMeta(r) {
   if (r.tipo) p.push(r.tipo);
   return p.length ? p.join(', ') : 'Sem dados complementares';
 }
+function corHex(c) {
+  return { good: '#0ca30c', warn: '#e59a00', serious: '#e06c3e', crit: '#d03b3b', crit2: '#7d1d4e', low: '#2a78d6' }[c] || '#6d7f77';
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function wrapLines(ctx, text, maxW) {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function renderFichaCanvas(f) {
+  const W = 1080;
+  const pad = 64;
+  const cardX = pad, cardW = W - pad * 2;
+  const imc = calcIMC(f.kg, f.cm);
+  const kPA = (f.pas > 0 && f.pad > 0) ? classPA(f.pas, f.pad) : null;
+  const kFC = f.fc > 0 ? classFC(f.fc) : null;
+  const kIMC = imc > 0 ? classIMC(imc) : null;
+
+  // Mede linhas extras de observação para dimensionar a altura dinamicamente
+  const tmp = document.createElement('canvas').getContext('2d');
+  tmp.font = '400 28px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  const obsLines = f.obs ? wrapLines(tmp, f.obs, cardW - 96) : [];
+  const obsH = obsLines.length ? (84 + obsLines.length * 38) : 0;
+
+  const H = 1320 + obsH;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // Fundo clínico suave
+  ctx.fillStyle = '#e3eeea';
+  ctx.fillRect(0, 0, W, H);
+
+  // Cabeçalho marca
+  roundRectPath(ctx, pad, 54, 72, 72, 22);
+  ctx.fillStyle = '#0a2a22';
+  ctx.fill();
+  ctx.strokeStyle = '#3fe0ad';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pad + 14, 92);
+  ctx.lineTo(pad + 24, 92);
+  ctx.lineTo(pad + 31, 74);
+  ctx.lineTo(pad + 42, 108);
+  ctx.lineTo(pad + 49, 92);
+  ctx.lineTo(pad + 58, 92);
+  ctx.stroke();
+
+  ctx.fillStyle = '#0b1f19';
+  ctx.font = '700 32px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.fillText(String(f.clinica || 'EcoSafety & EcoClinic').slice(0, 42), pad + 92, 102);
+
+  // Cartão branco principal
+  const cardY = 156;
+  const cardH = H - cardY - 120;
+  roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  let y = cardY + 62;
+  const innerX = cardX + 48;
+  const innerW = cardW - 96;
+
+  ctx.fillStyle = '#6d7f77';
+  ctx.font = '500 24px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.fillText('Ficha de triagem', innerX, y);
+  y += 52;
+
+  ctx.fillStyle = '#0b1f19';
+  ctx.font = '700 44px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  const nomeLines = wrapLines(ctx, f.n || 'Paciente', innerW).slice(0, 2);
+  for (const ln of nomeLines) {
+    ctx.fillText(ln, innerX, y);
+    y += 52;
+  }
+
+  ctx.fillStyle = '#44574e';
+  ctx.font = '400 26px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  const metaTxt = linhaMeta(f) + (f.dn ? ', nasc. ' + fDn(f.dn) : '');
+  const metaLines = wrapLines(ctx, metaTxt, innerW).slice(0, 2);
+  for (const ln of metaLines) {
+    ctx.fillText(ln, innerX, y);
+    y += 36;
+  }
+  y += 20;
+
+  // Bloco Hero: Pressão Arterial
+  const paH = 228;
+  roundRectPath(ctx, innerX, y, innerW, paH, 32);
+  ctx.fillStyle = '#0a2a22';
+  ctx.fill();
+
+  ctx.fillStyle = '#a3beb4';
+  ctx.font = '500 25px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.fillText('Pressão arterial', innerX + 36, y + 52);
+
+  ctx.fillStyle = '#f2fbf7';
+  ctx.font = '700 84px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  const paVal = (f.pas > 0 && f.pad > 0) ? (f.pas + '/' + f.pad) : '—';
+  ctx.fillText(paVal, innerX + 36, y + 144);
+  const paValW = ctx.measureText(paVal).width;
+
+  ctx.fillStyle = '#a3beb4';
+  ctx.font = '400 26px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.fillText('mmHg', innerX + 48 + paValW, y + 144);
+
+  const paColor = kPA ? corHex(PA[kPA].c) : '#a3beb4';
+  ctx.beginPath();
+  ctx.arc(innerX + 46, y + 190, 10, 0, Math.PI * 2);
+  ctx.fillStyle = paColor;
+  ctx.fill();
+  ctx.fillStyle = '#f2fbf7';
+  ctx.font = '600 26px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.fillText(kPA ? PA[kPA].l : 'Aguardando medida', innerX + 68, y + 199);
+
+  y += paH + 22;
+
+  // Grade 2x2: FC, IMC, Peso, Altura
+  const gap = 22;
+  const colW = (innerW - gap) / 2;
+
+  function drawMetricBox(bx, by, bw, bh, label, value, unit, statusLabel, statusColor) {
+    roundRectPath(ctx, bx, by, bw, bh, 30);
+    ctx.fillStyle = '#f1f6f3';
+    ctx.fill();
+
+    ctx.fillStyle = '#44574e';
+    ctx.font = '500 24px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.fillText(label, bx + 30, by + 48);
+
+    ctx.fillStyle = '#0b1f19';
+    ctx.font = '700 54px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.fillText(value, bx + 30, by + 116);
+    const vw = ctx.measureText(value).width;
+
+    ctx.fillStyle = '#6d7f77';
+    ctx.font = '400 24px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.fillText(unit, bx + 42 + vw, by + 116);
+
+    if (statusLabel) {
+      ctx.beginPath();
+      ctx.arc(bx + 39, by + 162, 9, 0, Math.PI * 2);
+      ctx.fillStyle = statusColor;
+      ctx.fill();
+      ctx.fillStyle = '#0b1f19';
+      ctx.font = '600 23px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+      ctx.fillText(statusLabel, bx + 58, by + 170);
+    }
+  }
+
+  drawMetricBox(innerX, y, colW, 200, 'Frequência cardíaca', f.fc > 0 ? String(f.fc) : '—', 'bpm', kFC ? FC[kFC].l : 'Aguardando', kFC ? corHex(FC[kFC].c) : '#6d7f77');
+  drawMetricBox(innerX + colW + gap, y, colW, 200, 'IMC', imc > 0 ? f1.format(imc) : '—', 'kg/m²', kIMC ? IMC[kIMC].l : 'Aguardando', kIMC ? corHex(IMC[kIMC].c) : '#6d7f77');
+  y += 200 + gap;
+
+  drawMetricBox(innerX, y, colW, 146, 'Peso', f.kg > 0 ? f1.format(f.kg) : '—', 'kg', null, null);
+  drawMetricBox(innerX + colW + gap, y, colW, 146, 'Altura', f.cm > 0 ? f2.format(f.cm / 100) : '—', 'm', null, null);
+  y += 146 + 34;
+
+  // Observações (se houver)
+  if (obsLines.length) {
+    ctx.fillStyle = '#6d7f77';
+    ctx.font = '500 23px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.fillText('Observações', innerX, y);
+    y += 38;
+    ctx.fillStyle = '#0b1f19';
+    ctx.font = '400 27px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+    for (const ln of obsLines) {
+      ctx.fillText(ln, innerX, y);
+      y += 38;
+    }
+    y += 16;
+  }
+
+  // Rodapé do cartão (Data, Profissional e Código)
+  ctx.fillStyle = '#44574e';
+  ctx.font = '400 25px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  const rodape = 'Medidas feitas em ' + fData(f.ts) + ' às ' + fHora(f.ts) + (f.enf ? ' por ' + f.enf : '') + ' • Código ' + f.codigo;
+  for (const ln of wrapLines(ctx, rodape, innerW)) {
+    ctx.fillText(ln, innerX, y + 12);
+    y += 34;
+  }
+
+  // Aviso inferior
+  ctx.fillStyle = '#6d7f77';
+  ctx.font = '400 22px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Mostre esta ficha ao médico. As medidas são da triagem; a avaliação é feita na consulta.', W / 2, H - 56);
+  ctx.textAlign = 'left';
+
+  return cv;
+}
+
+function nomeArquivoFicha(f, ext) {
+  const slug = semAcento(f.n || 'paciente').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'paciente';
+  return 'ficha-triagem-' + slug + '-' + String(f.codigo || 'ecoclinic').toLowerCase() + '.' + ext;
+}
+
+function baixarBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+function baixarFichaImagem(f) {
+  try {
+    const cv = renderFichaCanvas(f);
+    cv.toBlob(blob => {
+      if (!blob) { toast('Não foi possível gerar a imagem.'); return; }
+      baixarBlob(blob, nomeArquivoFicha(f, 'png'));
+      toast('Imagem da ficha baixada!');
+    }, 'image/png');
+  } catch (e) {
+    toast('Erro ao gerar imagem da ficha.');
+  }
+}
+
+function gerarPDFDeCanvas(cv) {
+  const dataUrl = cv.toDataURL('image/jpeg', 0.94);
+  const b64 = dataUrl.split(',')[1];
+  const bin = atob(b64);
+  const imgBytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) imgBytes[i] = bin.charCodeAt(i);
+
+  // Página A4 em pontos (595.28 x 841.89)
+  const pageW = 595.28, pageH = 841.89, margin = 28;
+  const maxW = pageW - margin * 2, maxH = pageH - margin * 2;
+  const ratio = Math.min(maxW / cv.width, maxH / cv.height);
+  const drawW = (cv.width * ratio).toFixed(2);
+  const drawH = (cv.height * ratio).toFixed(2);
+  const ox = ((pageW - Number(drawW)) / 2).toFixed(2);
+  const oy = ((pageH - Number(drawH)) / 2).toFixed(2);
+
+  const enc = new TextEncoder();
+  const chunks = [];
+  const offsets = [0];
+  let len = 0;
+  const pushStr = s => { const b = enc.encode(s); chunks.push(b); len += b.length; };
+  const pushBytes = b => { chunks.push(b); len += b.length; };
+
+  pushStr('%PDF-1.4\n%\xFF\xFF\xFF\xFF\n');
+
+  offsets.push(len);
+  pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+  offsets.push(len);
+  pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+
+  offsets.push(len);
+  pushStr(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+
+  offsets.push(len);
+  pushStr(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${cv.width} /Height ${cv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imgBytes.length} >>\nstream\n`);
+  pushBytes(imgBytes);
+  pushStr('\nendstream\nendobj\n');
+
+  const content = `q\n${drawW} 0 0 ${drawH} ${ox} ${oy} cm\n/Im0 Do\nQ\n`;
+  offsets.push(len);
+  pushStr(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}endstream\nendobj\n`);
+
+  const xrefPos = len;
+  pushStr(`xref\n0 ${offsets.length}\n0000000000 65535 f \n`);
+  for (let i = 1; i < offsets.length; i++) {
+    pushStr(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
+  }
+  pushStr(`trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`);
+
+  return new Blob(chunks, { type: 'application/pdf' });
+}
+
+function baixarFichaPDF(f) {
+  try {
+    const cv = renderFichaCanvas(f);
+    const pdfBlob = gerarPDFDeCanvas(cv);
+    baixarBlob(pdfBlob, nomeArquivoFicha(f, 'pdf'));
+    toast('PDF da ficha baixado!');
+  } catch (e) {
+    window.print();
+  }
+}
+
 function mostrarFicha(hash) {
   const f = lerFicha(hash), el = $('#ficha');
   $('#app').hidden = true; el.hidden = false;
-  const voltar = S.started ? '<a class="btn" href="#atendimentos">Voltar ao sistema</a>' : '';
+  const voltar = S.started ? '<a class="btn fx-voltar" href="#atendimentos">Voltar ao sistema</a>' : '';
   if (!f) {
     el.innerHTML = '<div class="fx-card"><h1>QR Code inválido</h1><p class="fx-meta">Não foi possível ler esta ficha. Peça à enfermagem para gerar o código novamente.</p></div>' + voltar;
     return;
   }
-  document.title = 'Ficha de triagem';
+  document.title = 'Ficha de triagem — ' + f.n;
   el.innerHTML =
     '<div class="fx-top">' + MARCA + '<b>' + esc(f.clinica || 'EcoClinic') + '</b></div>' +
     '<div class="fx-card">' +
@@ -1123,7 +1437,13 @@ function mostrarFicha(hash) {
       (f.obs ? '<div><p class="note">Observações</p><p>' + esc(f.obs) + '</p></div>' : '') +
       '<p class="fx-meta">Medidas feitas em <b>' + fData(f.ts) + ' às ' + fHora(f.ts) + '</b>' + (f.enf ? ' por ' + esc(f.enf) : '') + '. Código <b>' + esc(f.codigo) + '</b>.</p>' +
     '</div>' +
+    '<div class="fx-actions">' +
+      '<button class="btn pri" type="button" id="fx-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>Baixar PDF</button>' +
+      '<button class="btn" type="button" id="fx-img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Baixar Imagem</button>' +
+    '</div>' +
     '<p class="fx-foot">Mostre esta tela ao médico. As medidas são da triagem; a avaliação é feita na consulta.</p>' + voltar;
+  $('#fx-pdf').addEventListener('click', () => baixarFichaPDF(f));
+  $('#fx-img').addEventListener('click', () => baixarFichaImagem(f));
 }
 
 /* ================= formulário ================= */
